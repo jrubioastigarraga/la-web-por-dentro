@@ -109,9 +109,14 @@ export async function fetchMoodleQuestions(config) {
     .replace(/\/+$/, '');
   const url = new URL(`${base}/local/lwpd/questions.php`);
   url.searchParams.set('ids', ids.join(','));
-  if (config.key) url.searchParams.set('key', config.key);
 
-  const response = await fetch(url.toString(), { cache: 'no-store' });
+  const headers = {};
+  if (config.key) headers['X-LWPD-Key'] = config.key;
+
+  const response = await fetch(url.toString(), {
+    cache: 'no-store',
+    headers,
+  });
   if (!response.ok) throw new Error(`http-${response.status}`);
 
   const data = await response.json();

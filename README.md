@@ -62,7 +62,7 @@ El botón **ES / EU** de la barra superior cambia toda la interfaz: menú, panel
 En la pantalla inicial, el botón **Moodle** permite cargar preguntas concretas por su ID antes de jugar:
 
 1. Instala una sola vez el endpoint `moodle/local/lwpd/questions.php` en tu Moodle (ver [`moodle/README.md`](/jrubioastigarraga/la-web-por-dentro/blob/main/moodle/README.md)).
-2. En el juego, pulsa **Moodle**, escribe el servidor (`https://moodle.lhusurbil.eus`), la clave opcional y los IDs separados por comas.
+2. En el juego, pulsa **Moodle**, escribe el servidor (`https://moodle.lhusurbil.eus`), la **clave obligatoria** y los IDs separados por comas.
 3. **Cargar y jugar**: el juego pide esas preguntas, las reparte y empieza la partida.
 
 Cada ID se convierte en **una pantalla (`STAGE`) independiente**: si pones 2 IDs, jugarás 2 pantallas; si pones 5, 5 pantallas.

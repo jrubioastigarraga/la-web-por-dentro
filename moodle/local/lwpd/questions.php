@@ -1,23 +1,47 @@
-<?php
 /**
  * Endpoint de solo lectura para "Escuadrón Web".
  *
  * Devuelve preguntas del banco de Moodle en JSON plano:
- *   GET /local/lwpd/questions.php?ids=101,102,103&key=OPCIONAL
+ *   GET /local/lwpd/questions.php?ids=101,102,103
+ *   Header: X-LWPD-Key: TU_CLAVE
  *
  * Respuesta:
  *   {"questions":[{"id":101,"q":"...","options":["a","b"],"correct":0,"why":"..."}]}
  *
  * Solo admite preguntas de tipo multichoice y truefalse.
- * No requiere sesión, pero se recomienda definir KEY para limitar el acceso.
  */
 
-define('LWPD_KEY', ''); // Pon aquí una clave y configúrala también en el juego.
+/* -------------------------------------------------------------------------
+ * CONFIGURACIÓN OBLIGATORIA
+ * ---------------------------------------------------------------------- */
 
+// Clave larga y aleatoria. Sin esto el endpoint queda desactivado.
+define('LWPD_KEY', '');
+
+// Origen permitido para el navegador. Ejemplo:
+//   define('LWPD_ALLOWED_ORIGIN', 'https://jrubioastigarraga.github.io');
+// Si se deja vacío, se acepta cualquier origen (menos seguro).
+define('LWPD_ALLOWED_ORIGIN', '');
+
+// Lista blanca opcional de IDs. Si se rellena, solo se sirven esos IDs.
+// Ejemplo: define('LWPD_ALLOWED_IDS', '101,102,103,104');
+define('LWPD_ALLOWED_IDS', '');
+
+/* ---------------------------------------------------------------------- */
+
+$allowedOrigin = LWPD_ALLOWED_ORIGIN;
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, OPTIONS');
 header('Cache-Control: no-store');
+header('X-Content-Type-Options: nosniff');
+header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Headers: X-LWPD-Key, Content-Type');
+
+if ($allowedOrigin !== '') {
+    header('Access-Control-Allow-Origin: ' . $allowedOrigin);
+    header('Vary: Origin');
+} else {
+    header('Access-Control-Allow-Origin: *');
+}
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
     http_response_code(204);
@@ -38,8 +62,23 @@ function lwpd_fail($code, $status = 400) {
     exit;
 }
 
-$key = optional_param('key', '', PARAM_TEXT);
-if (LWPD_KEY !== '' && !hash_equals(LWPD_KEY, $key)) {
+// Sin clave configurada no se sirve nada.
+if (LWPD_KEY === '') {
+    lwpd_fail('endpoint-not-configured', 503);
+}
+
+// Origen: si hay cabecera Origin y no coincide, se rechaza.
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if ($allowedOrigin !== '' && $origin !== '' && $origin !== $allowedOrigin) {
+    lwpd_fail('forbidden-origin', 403);
+}
+
+// La clave viaja en cabecera (no en la URL) para no dejarla en los logs.
+$key = $_SERVER['HTTP_X_LWPD_KEY'] ?? '';
+if ($key === '') {
+    $key = optional_param('key', '', PARAM_TEXT);
+}
+if (!hash_equals(LWPD_KEY, $key)) {
     lwpd_fail('forbidden', 403);
 }
 
@@ -53,6 +92,14 @@ foreach (preg_split('/[^0-9]+/', $raw) as $chunk) {
 $ids = array_slice(array_values(array_unique($ids)), 0, 30);
 if (!$ids) {
     lwpd_fail('missing-ids');
+}
+
+$allowedIds = array_values(array_filter(array_map('intval', preg_split('/[^0-9]+/', LWPD_ALLOWED_IDS))));
+if ($allowedIds) {
+    $ids = array_values(array_intersect($ids, $allowedIds));
+    if (!$ids) {
+        lwpd_fail('id-not-allowed', 403);
+    }
 }
 
 $dbman = $DB->get_manager();

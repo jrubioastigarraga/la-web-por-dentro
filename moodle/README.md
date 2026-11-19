@@ -13,18 +13,27 @@ plano a partir de los IDs.
    /var/www/moodle/local/lwpd/questions.php
    ```
 
-2. (Recomendado) Abre `questions.php` y define una clave:
+2. **Configura la clave (obligatoria)**. Abre `questions.php` y define:
 
    ```php
-   define('LWPD_KEY', 'mi-clave-secreta');
+   define('LWPD_KEY', 'una-clave-larga-y-aleatoria');
    ```
 
-   Esa misma clave se escribe en el juego.
+   Sin clave el endpoint responde `503 endpoint-not-configured` y no sirve
+   ninguna pregunta. Esa misma clave se escribe en el juego.
 
-3. Comprueba que responde. En el navegador:
+   Opcionalmente puedes limitar el origen y los IDs:
+
+   ```php
+   define('LWPD_ALLOWED_ORIGIN', 'https://jrubioastigarraga.github.io');
+   define('LWPD_ALLOWED_IDS', '101,102,103,104');
+   ```
+
+3. Comprueba que responde. En el navegador (la clave va en la URL solo para
+   esta prueba):
 
    ```
-   https://moodle.lhusurbil.eus/local/lwpd/questions.php?ids=101,102,103
+   https://moodle.lhusurbil.eus/local/lwpd/questions.php?ids=101,102,103&key=TU_CLAVE
    ```
 
    Debe devolver algo como:
@@ -61,6 +70,23 @@ En la pantalla inicial, pulsa **Moodle** (arriba a la derecha) y rellena:
 El juego pedirá esas preguntas, las repartirá en la partida y usará sus
 opciones. Solo se admiten preguntas de tipo **multichoice** y **truefalse**;
 el resto se ignoran.
+
+## Seguridad
+
+- El endpoint **solo devuelve las preguntas pedidas** y nunca datos de usuarios,
+  intentos ni calificaciones.
+- La clave es **obligatoria** y viaja en la cabecera `X-LWPD-Key`, no en la URL,
+  para que no quede en los logs del servidor.
+- Con `LWPD_ALLOWED_ORIGIN` solo responde al dominio del juego, y con
+  `LWPD_ALLOWED_IDS` solo sirve los IDs que hayas autorizado.
+- Aun así, la clave está en el navegador del jugador (en `localStorage`). Sirve
+  para frenar el acceso casual y a otras webs, **no es autenticación real**.
+  Si las preguntas son confidenciales, la opción correcta es servir el juego
+  **desde el propio Moodle** (por ejemplo en `/local/lwpd/game/`) y proteger el
+  endpoint con `require_login()` y la capacidad que corresponda; así solo
+  responde a usuarios con sesión iniciada y se puede quitar el CORS.
+- Para una demo pública sin preguntas sensibles, el modelo actual (clave +
+  origen + lista blanca) es suficiente.
 
 ## Notas
 
