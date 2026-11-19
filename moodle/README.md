@@ -26,6 +26,62 @@ de Moodle y se configura desde la administración, sin editar PHP a mano.
 Copia `moodle/plugin/lwpd` a la raíz de Moodle como `local/lwpd` y visita
 **Administración del sitio → Notificaciones**.
 
+## Si falla la instalación por permisos
+
+Si al subir el ZIP aparece algo como:
+
+```
+[Error] Write access check [/var/www/html/moodle/public/local]
+```
+
+Moodle no puede escribir en `public/local`. En el servidor:
+
+1. Averigua el usuario del servidor web:
+
+   ```bash
+   ps -eo user,comm | grep -E 'apache2|httpd|nginx|php-fpm' | sort -u
+   ```
+
+2. Da permiso de escritura a ese usuario (ejemplo con `www-data`):
+
+   ```bash
+   sudo mkdir -p /var/www/html/moodle/public/local
+   sudo chown -R www-data:www-data /var/www/html/moodle/public/local
+   sudo chmod 775 /var/www/html/moodle/public/local
+   ```
+
+   Cambia `www-data` por el usuario que haya salido en el paso 1
+   (`apache`, `nginx`, `http`, etc.).
+
+3. Vuelve a intentar la instalación por ZIP.
+
+Si usas **SELinux** (RHEL/CentOS/Rocky):
+
+```bash
+sudo semanage fcontext -a -t httpd_sys_rw_content_t "/var/www/html/moodle/public/local(/.*)?"
+sudo restorecon -Rv /var/www/html/moodle/public/local
+```
+
+### Alternativa: instalar a mano
+
+Si no puedes cambiar permisos, copia la carpeta con `sudo` y luego visita
+**Notificaciones**:
+
+```bash
+sudo cp -r lwpd /var/www/html/moodle/public/local/
+sudo chown -R www-data:www-data /var/www/html/moodle/public/local/lwpd
+```
+
+Debe quedar:
+
+```
+/var/www/html/moodle/public/local/lwpd/version.php
+/var/www/html/moodle/public/local/lwpd/vrquestions.php
+```
+
+No uses `chmod 777`; con el propietario correcto y `775` es suficiente.
+
+
 ## Configuración
 
 **Administración del sitio → Plugins → Plugins locales → Escuadrón Web
