@@ -153,22 +153,39 @@ export function makeIslandTexture(variant = 0) {
   return toTexture(canvas);
 }
 
-export function makeCloudTexture() {
-  const { canvas, ctx } = makeCanvas(512, 320);
-  for (let i = 0; i < 20; i++) {
-    const x = 80 + Math.random() * 352;
-    const y = 90 + Math.random() * 120;
-    const r = 46 + Math.random() * 72;
-    const grad = ctx.createRadialGradient(x, y - 10, 4, x, y, r);
-    grad.addColorStop(0, 'rgba(255,255,255,0.85)');
-    grad.addColorStop(0.55, 'rgba(240,250,255,0.34)');
+export function makeCloudLayerTexture() {
+  const W = 768;
+  const H = 1024;
+  const { canvas, ctx } = makeCanvas(W, H);
+
+  const puff = (x, y, r, alpha) => {
+    const grad = ctx.createRadialGradient(x, y, r * 0.08, x, y, r);
+    grad.addColorStop(0, `rgba(255,255,255,${alpha})`);
+    grad.addColorStop(0.5, `rgba(240,250,255,${alpha * 0.42})`);
     grad.addColorStop(1, 'rgba(220,240,255,0)');
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
+  };
+
+  // se dibuja también fuera de los bordes para que el bucle vertical sea continuo
+  for (let i = 0; i < 26; i++) {
+    const x = Math.random() * W;
+    const y = Math.random() * H;
+    const r = 46 + Math.random() * 86;
+    const alpha = 0.5 + Math.random() * 0.35;
+
+    for (let k = 0; k < 3; k++) {
+      const cx = x;
+      const cy = y + (k - 1) * H;
+      puff(cx, cy, r, alpha);
+      puff(cx + r * 0.55, cy + r * 0.22, r * 0.7, alpha * 0.8);
+      puff(cx - r * 0.6, cy + r * 0.26, r * 0.62, alpha * 0.7);
+    }
   }
-  return toTexture(canvas);
+
+  return toTexture(canvas, true);
 }
 
 /* ------------------------------------------------------------- partículas */
@@ -467,7 +484,7 @@ export const shared = {
   fireball: () => cached('fx.fireball', () => makeFireTexture()),
   smoke: () => cached('fx.smoke', () => makeSmokeTexture()),
   shadow: () => cached('fx.shadow', () => makeShadowTexture()),
-  cloud: () => cached('fx.cloud', () => makeCloudTexture()),
+  cloudLayer: () => makeCloudLayerTexture(),
   water: () => cached('fx.water', () => makeWaterTexture()),
 };
 
@@ -557,7 +574,7 @@ export class ScrollingWorld {
     this.group = new THREE.Group();
     this.group.position.z = z;
     this.islands = [];
-    this.clouds = [];
+    this.cloudLayers = [];
     this.foam = [];
 
     const halfW = width / 2;
@@ -614,32 +631,29 @@ export class ScrollingWorld {
       this.islands.push(island);
     }
 
-    // nubes
-    const cloudW = 0.42 * scale;
-    const cloudH = 0.26 * scale;
-    for (let i = 0; i < Math.round(6 * density); i++) {
+    // capas de nubes continuas: sin objetos que aparezcan y desaparezcan
+    this.cloudLayers = [];
+    for (let i = 0; i < 2; i++) {
+      const tex = makeCloudLayerTexture();
+      tex.repeat.set(1, i === 0 ? 0.9 : 1.8);
       const mesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(cloudW, cloudH),
+        new THREE.PlaneGeometry(width, height),
         new THREE.MeshBasicMaterial({
-          map: shared.cloud(),
+          map: tex,
           transparent: true,
-          opacity: 0.32,
+          opacity: i === 0 ? 0.32 : 0.14,
           depthWrite: false,
           toneMapped: false,
         })
       );
-      const cloud = {
-        mesh,
-        w: cloudW,
-        h: cloudH,
-        speed: (0.045 + Math.random() * 0.05) * Math.sqrt(scale),
-        fade: 0,
-        baseOpacity: 0.12 + Math.random() * 0.22,
-      };
-      this.placeTop(cloud);
-      mesh.position.y = -halfH + cloudH / 2 + Math.random() * (height - cloudH);
+      mesh.position.z = 0.003;
+      mesh.renderOrder = -37 + i * 0.5;
       this.group.add(mesh);
-      this.clouds.push(cloud);
+      this.cloudLayers.push({
+        mesh,
+        tex,
+        speed: i === 0 ? 0.045 : 0.095,
+      });
     }
 
     // espuma
@@ -662,9 +676,17 @@ export class ScrollingWorld {
       );
       mesh.userData.speed = 0.09 + Math.random() * 0.15;
       mesh.userData.baseOpacity = mesh.material.opacity;
+      mesh.renderOrder = -36;
       this.group.add(mesh);
       this.foam.push(mesh);
     }
+
+    // orden fijo de capas: evita que el mar parpadee al solaparse
+    base.renderOrder = -41;
+    water.renderOrder = -40;
+    this.islands.forEach((island, i) => {
+      island.mesh.renderOrder = -39 - i * 0.01;
+    });
 
     this.halfW = halfW;
     this.halfH = halfH;
@@ -675,7 +697,8 @@ export class ScrollingWorld {
     this.waterMat.color.setHex(hex);
   }
 
-  placeTop(obj) {    const w = obj.w || obj.size;
+  placeTop(obj) {
+    const w = obj.w || obj.size;
     const h = obj.h || obj.size;
     const xMax = Math.max(0, this.width / 2 - w / 2 - 0.01);
     obj.mesh.position.x = (Math.random() * 2 - 1) * xMax;
@@ -686,29 +709,22 @@ export class ScrollingWorld {
 
   update(dt) {
     const halfH = this.halfH;
-    const fadeBand = 0.07;
+    const fadeBand = 0.12;
 
     this.waterTex.offset.y -= dt * 0.055;
 
+    for (const layer of this.cloudLayers) {
+      layer.tex.offset.y -= dt * layer.speed;
+    }
+
     for (const island of this.islands) {
       island.mesh.position.y -= island.speed * dt;
-      island.fade = Math.min(1, island.fade + dt * 2.4);
+      island.fade = Math.min(1, island.fade + dt * 1.2);
       const bottom = island.mesh.position.y - island.size / 2;
       const edge = THREE.MathUtils.clamp((bottom + halfH) / fadeBand, 0, 1);
       island.mesh.material.opacity = island.baseOpacity * island.fade * edge;
       if (bottom < -halfH) {
         this.placeTop(island);
-      }
-    }
-
-    for (const cloud of this.clouds) {
-      cloud.mesh.position.y -= cloud.speed * dt;
-      cloud.fade = Math.min(1, cloud.fade + dt * 1.8);
-      const bottom = cloud.mesh.position.y - cloud.h / 2;
-      const edge = THREE.MathUtils.clamp((bottom + halfH) / fadeBand, 0, 1);
-      cloud.mesh.material.opacity = cloud.baseOpacity * cloud.fade * edge;
-      if (bottom < -halfH) {
-        this.placeTop(cloud);
       }
     }
 

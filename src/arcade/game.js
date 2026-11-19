@@ -333,11 +333,11 @@ export class Arcade {
       this.isPractice ? 'PRÁCTICA' : `STAGE ${this.sectorPos + 1}`,
       sector.title.toUpperCase(),
       sector.tone,
-      1.5
+      1.25
     );
     sfx.stage();
 
-    this.api.after(2100, () => this.nextQuestion());
+    this.api.after(2400, () => this.nextQuestion());
   }
 
   nextQuestion() {
@@ -346,6 +346,7 @@ export class Arcade {
       return;
     }
 
+    this.clearBanner();
     this.current = this.queue[this.qIndex];
     this.state = 'playing';
     this.clearTargets();
