@@ -458,21 +458,26 @@ async function runMoodle(play) {
     setMoodleStatus(t('moodleReady', { n: questions.length }), 'ok');
     if (!play) return;
 
-    const sector = {
-      id: 'moodle',
+    const tones = ['#4de2c5', '#ffb454', '#a78bfa', '#60a5fa', '#f472b6'];
+    const sectors = questions.map((question, index) => ({
+      id: `moodle-${index}`,
       title: 'Moodle',
-      tag: 'Moodle',
-      tone: '#4de2c5',
+      titleEu: 'Moodle',
+      tag: t('moodleMode', { n: questions.length }),
+      tone: tones[index % tones.length],
       color: 0x4de2c5,
-      brief: t('moodleMode', { n: questions.length }),
-      questions,
-    };
+      brief: t('moodleQuestion', {
+        n: index + 1,
+        total: questions.length,
+      }),
+      questions: [question],
+    }));
 
     closeMoodle();
     startGame({
       moodle: true,
-      sectors: [sector],
-      perSector: questions.length,
+      sectors,
+      perSector: 1,
     });
   } catch (error) {
     console.error(error);

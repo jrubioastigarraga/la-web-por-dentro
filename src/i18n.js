@@ -76,6 +76,11 @@ const STRINGS = {
     moodleNeedIds: 'Escribe al menos una ID.',
     moodleNoConfig: 'Configura Moodle para jugar con tus preguntas.',
     moodleMode: 'Moodle · {n} preguntas',
+    moodleQuestion: 'Pregunta {n} de {total}',
+    moodleDone: 'MOODLE COMPLETADO',
+    moodleResult: '{done} de {total} pantallas',
+    moodleMessage:
+      'Moodle completado: {done} de {total} pantallas y {score} puntos.',
   },
   eu: {
     /* menua */
@@ -150,6 +155,11 @@ const STRINGS = {
     moodleNeedIds: 'Idatzi gutxienez ID bat.',
     moodleNoConfig: 'Konfiguratu Moodle zure galderak erabiltzeko.',
     moodleMode: 'Moodle · {n} galdera',
+    moodleQuestion: '{n}. galdera, {total}tik',
+    moodleDone: 'MOODLE AMAITUTA',
+    moodleResult: '{done} / {total} pantaila',
+    moodleMessage:
+      'Moodle amaituta: {done} / {total} pantaila eta {score} puntu.',
   },
 };
 

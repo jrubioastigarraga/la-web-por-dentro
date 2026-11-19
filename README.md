@@ -65,6 +65,8 @@ En la pantalla inicial, el botón **Moodle** permite cargar preguntas concretas 
 2. En el juego, pulsa **Moodle**, escribe el servidor (`https://moodle.lhusurbil.eus`), la clave opcional y los IDs separados por comas.
 3. **Cargar y jugar**: el juego pide esas preguntas, las reparte y empieza la partida.
 
+Cada ID se convierte en **una pantalla (`STAGE`) independiente**: si pones 2 IDs, jugarás 2 pantallas; si pones 5, 5 pantallas.
+
 Moodle no ofrece un Web Service estándar para pedir una pregunta por ID, por eso se usa ese pequeño endpoint de solo lectura (con CORS y clave opcional). Solo se admiten preguntas de tipo **multichoice** y **truefalse**.
 
 ## Modos

@@ -299,7 +299,7 @@ export class Arcade {
 
   header() {
     const title = sectorTitle(this.sector).toUpperCase();
-    if (this.isMoodle) return `MOODLE · ${this.queue.length} ${t('questions').toUpperCase()}`;
+    if (this.isMoodle) return `${t('stageName')} ${Math.min(this.sectorPos + 1, this.order.length)}/${this.order.length} · MOODLE`;
     if (this.isPractice) return `${t('practiceName')} · ${title}`;
     return `${t('stageName')} ${this.sectorPos + 1}/${this.order.length} · ${title}`;
   }
@@ -308,14 +308,16 @@ export class Arcade {
     const title = sectorTitle(this.sector);
     this.status.setStats({
       stage: this.isMoodle
-        ? `MOODLE · ${this.queue.length}`
+        ? `${t('stageName')} ${Math.min(this.sectorPos + 1, this.order.length)}/${this.order.length} · MOODLE`
         : this.isPractice
           ? `${t('practiceName')} ${title}`
           : `${t('stageName')} ${this.sectorPos + 1} · ${title}`,
       score: this.score,
       lives: this.lives,
-      question: this.qIndex,
-      total: this.queue.length,
+      question: this.isMoodle
+        ? Math.min(this.sectorsDone, this.order.length)
+        : this.qIndex,
+      total: this.isMoodle ? this.order.length : this.queue.length,
       tone: this.sector.tone,
     });
   }
@@ -354,21 +356,28 @@ export class Arcade {
     }
     this.bullets = [];
     this.refreshStatus();
-    this.ask(sectorBrief(sector));
+    this.ask(
+      this.isMoodle
+        ? t('moodleQuestion', {
+            n: this.sectorPos + 1,
+            total: this.order.length,
+          })
+        : sectorBrief(sector)
+    );
 
     this.banner(
       this.isMoodle
-        ? 'MOODLE'
+        ? `${t('stageName')} ${this.sectorPos + 1}/${this.order.length}`
         : this.isPractice
           ? t('practiceName')
           : `${t('stageName')} ${this.sectorPos + 1}`,
-      sectorTitle(sector).toUpperCase(),
+      this.isMoodle ? 'MOODLE' : sectorTitle(sector).toUpperCase(),
       sector.tone,
-      1.25
+      0.9
     );
     sfx.stage();
 
-    this.api.after(2400, () => this.nextQuestion());
+    this.api.after(this.isMoodle ? 1200 : 2400, () => this.nextQuestion());
   }
 
   nextQuestion() {
@@ -638,6 +647,18 @@ export class Arcade {
   sectorClear() {
     if (this.state === 'clear' || this.state === 'victory') return;
     this.state = 'clear';
+
+    if (this.isMoodle) {
+      this.sectorsDone += 1;
+      this.refreshStatus();
+      this.api.after(700, () => {
+        this.sectorPos += 1;
+        if (this.sectorPos >= this.order.length) this.victory();
+        else this.beginSector();
+      });
+      return;
+    }
+
     const extra = this.lives < MAX_LIVES;
     this.lives = Math.min(MAX_LIVES, this.lives + 1);
     this.score += 250;
@@ -683,32 +704,46 @@ export class Arcade {
     this.api.submitScore(this.score, this.isMoodle ? 0 : this.sectorsDone);
     this.showResultMessage(
       'ok',
-      this.single
-        ? t('practiceMessage', {
-            sector: sectorTitle(this.sector),
+      this.isMoodle
+        ? t('moodleMessage', {
+            done: this.sectorsDone,
+            total: this.order.length,
             score: this.score,
           })
-        : t('allDoneMessage', { score: this.score })
+        : this.single
+          ? t('practiceMessage', {
+              sector: sectorTitle(this.sector),
+              score: this.score,
+            })
+          : t('allDoneMessage', { score: this.score })
     );
     this.showResult(true);
   }
 
   showResult(win) {
     this.clearBanner();
+    this.status.mesh.visible = false;
     const panel = makeCard({
       w: 0.78,
       h: 0.36,
       title: win
-        ? this.single
-          ? `✔ ${t('practiceDone')}`
-          : `✔ ${t('campaignDone')}`
+        ? this.isMoodle
+          ? `✔ ${t('moodleDone')}`
+          : this.single
+            ? `✔ ${t('practiceDone')}`
+            : `✔ ${t('campaignDone')}`
         : `✘ ${t('downTitle')}`,
-      sub: this.single
-        ? t('resultPractice', { sector: sectorTitle(this.sector) })
-        : t('resultCampaign', {
+      sub: this.isMoodle
+        ? t('moodleResult', {
             done: this.sectorsDone,
             total: this.order.length,
-          }),
+          })
+        : this.single
+          ? t('resultPractice', { sector: sectorTitle(this.sector) })
+          : t('resultCampaign', {
+              done: this.sectorsDone,
+              total: this.order.length,
+            }),
       foot: t('resultFoot', { score: this.score, best: this.api.best }),
       align: 'center',
       tone: win ? '#4ade80' : '#ff5d73',
