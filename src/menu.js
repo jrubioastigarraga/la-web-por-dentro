@@ -69,20 +69,29 @@ export function buildMenu(api) {
     h: 0.09,
     color: '#4de2c5',
   });
-  play.position.set(0, 1.3, -1.5);
+  play.position.set(0, 1.33, -1.5);
   play.userData.onSelect = () => api.startGame({ sector: null });
   group.add(play);
 
   const playGlow = makeGlow('#4de2c5', 0.9, 0.18);
-  playGlow.position.set(0, 1.3, -1.55);
+  playGlow.position.set(0, 1.33, -1.55);
   group.add(playGlow);
+
+  const moodle = makeButton('MOODLE', {
+    w: 0.26,
+    h: 0.062,
+    color: '#a78bfa',
+  });
+  moodle.position.set(0, 1.225, -1.5);
+  moodle.userData.onSelect = () => api.playMoodle();
+  group.add(moodle);
 
   const practiceLabel = makeText(t('practice').toUpperCase(), {
     height: 0.016,
     weight: 700,
     color: '#8296ad',
   });
-  practiceLabel.position.set(0, 1.18, -1.5);
+  practiceLabel.position.set(0, 1.13, -1.5);
   group.add(practiceLabel);
 
   const cards = [];
@@ -98,14 +107,14 @@ export function buildMenu(api) {
       align: 'center',
       bg: 'rgba(8,15,26,0.92)',
     });
-    card.position.set(x, 1.06, -1.32 - Math.abs(i - 2) * 0.03);
+    card.position.set(x, 1.02, -1.32 - Math.abs(i - 2) * 0.03);
     card.rotation.y = -x * 0.25;
     card.userData.onSelect = () => api.startGame({ sector: i });
     group.add(card);
     cards.push(card);
 
     const aura = makeGlow(sector.tone, 0.5, 0.12);
-    aura.position.set(x, 1.06, card.position.z - 0.01);
+    aura.position.set(x, 1.02, card.position.z - 0.01);
     group.add(aura);
   });
 
@@ -124,7 +133,7 @@ export function buildMenu(api) {
     sea.update(dt);
 
     cards.forEach((card, i) => {
-      card.position.y = 1.06 + Math.sin(t * 1.4 + i * 0.8) * 0.005;
+      card.position.y = 1.02 + Math.sin(t * 1.4 + i * 0.8) * 0.005;
     });
     title.position.y = 1.6 + Math.sin(t * 0.9) * 0.006;
     watermark.material.opacity = 0.07 + Math.sin(t * 0.7) * 0.03;

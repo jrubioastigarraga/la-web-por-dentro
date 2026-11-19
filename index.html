@@ -47,6 +47,18 @@
         />
         <label for="moodle-key" id="moodle-key-label">Clave de acceso</label>
         <input id="moodle-key" type="text" autocomplete="off" spellcheck="false" />
+        <label for="moodle-quiz" id="moodle-quiz-label">Cuestionario (cmid)</label>
+        <input
+          id="moodle-quiz"
+          type="text"
+          inputmode="numeric"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="1234"
+        />
+        <p class="help" id="moodle-quiz-hint">
+          ID del cuestionario en Moodle (mod/quiz/view.php?id=...). Si lo pones, se cargan todas sus preguntas.
+        </p>
         <label for="moodle-ids" id="moodle-ids-label">IDs de preguntas</label>
         <textarea
           id="moodle-ids"

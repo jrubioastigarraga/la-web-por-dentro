@@ -336,6 +336,7 @@ const api = {
   tick,
   startGame,
   showMenu,
+  playMoodle: quickMoodle,
   submitScore,
   get best() {
     return save.best;
@@ -418,6 +419,7 @@ const modal = document.getElementById('moodle-modal');
 const moodleStatus = document.getElementById('moodle-status');
 const urlInput = document.getElementById('moodle-url');
 const keyInput = document.getElementById('moodle-key');
+const quizInput = document.getElementById('moodle-quiz');
 const idsInput = document.getElementById('moodle-ids');
 
 function setMoodleStatus(text, kind = '') {
@@ -430,24 +432,50 @@ function openMoodle() {
   const config = loadMoodleConfig();
   if (urlInput) urlInput.value = config.base;
   if (keyInput) keyInput.value = config.key;
+  if (quizInput) quizInput.value = config.quiz;
   if (idsInput) idsInput.value = config.ids;
   setMoodleStatus('');
   if (modal) modal.hidden = false;
-  setTimeout(() => idsInput?.focus(), 60);
+  setTimeout(() => (quizInput?.value ? idsInput : quizInput)?.focus(), 60);
 }
 
 function closeMoodle() {
   if (modal) modal.hidden = true;
 }
 
+function startMoodleGame(questions) {
+  const tones = ['#4de2c5', '#ffb454', '#a78bfa', '#60a5fa', '#f472b6'];
+  const sectors = questions.map((question, index) => ({
+    id: `moodle-${index}`,
+    title: 'Moodle',
+    titleEu: 'Moodle',
+    tag: t('moodleMode', { n: questions.length }),
+    tone: tones[index % tones.length],
+    color: 0x4de2c5,
+    brief: t('moodleQuestion', {
+      n: index + 1,
+      total: questions.length,
+    }),
+    questions: [question],
+  }));
+
+  closeMoodle();
+  startGame({
+    moodle: true,
+    sectors,
+    perSector: 1,
+  });
+}
+
 async function runMoodle(play) {
   const config = saveMoodleConfig({
     base: urlInput?.value,
     key: keyInput?.value,
+    quiz: quizInput?.value,
     ids: idsInput?.value,
   });
 
-  if (!parseIds(config.ids).length) {
+  if (!config.quiz && !parseIds(config.ids).length) {
     setMoodleStatus(t('moodleNeedIds'), 'error');
     return;
   }
@@ -457,31 +485,44 @@ async function runMoodle(play) {
     const questions = await fetchMoodleQuestions(config);
     setMoodleStatus(t('moodleReady', { n: questions.length }), 'ok');
     if (!play) return;
-
-    const tones = ['#4de2c5', '#ffb454', '#a78bfa', '#60a5fa', '#f472b6'];
-    const sectors = questions.map((question, index) => ({
-      id: `moodle-${index}`,
-      title: 'Moodle',
-      titleEu: 'Moodle',
-      tag: t('moodleMode', { n: questions.length }),
-      tone: tones[index % tones.length],
-      color: 0x4de2c5,
-      brief: t('moodleQuestion', {
-        n: index + 1,
-        total: questions.length,
-      }),
-      questions: [question],
-    }));
-
-    closeMoodle();
-    startGame({
-      moodle: true,
-      sectors,
-      perSector: 1,
-    });
+    startMoodleGame(questions);
   } catch (error) {
     console.error(error);
     setMoodleStatus(`${t('moodleError')} (${error.message})`, 'error');
+  }
+}
+
+/**
+ * Inicio rápido desde el menú 3D (también en VR): usa la configuración
+ * guardada, sin abrir el formulario.
+ */
+async function quickMoodle() {
+  const config = loadMoodleConfig();
+  const hasTarget = Boolean(config.quiz) || parseIds(config.ids).length > 0;
+
+  if (!hasTarget) {
+    hud.set(
+      'MOODLE',
+      t('moodleNoConfig'),
+      t('moodleHint'),
+      '#ffb454'
+    );
+    return;
+  }
+
+  hud.set('MOODLE', t('moodleLoading'), '', '#4de2c5');
+
+  try {
+    const questions = await fetchMoodleQuestions(config);
+    startMoodleGame(questions);
+  } catch (error) {
+    console.error(error);
+    hud.set(
+      'MOODLE',
+      t('moodleError'),
+      `${error.message} · ${t('moodleHint')}`,
+      '#ff5d73'
+    );
   }
 }
 
@@ -687,6 +728,7 @@ renderer.setAnimationLoop(() => {
 window.__arcade = {
   startGame,
   showMenu,
+  playMoodle: quickMoodle,
   get game() {
     return game;
   },
@@ -695,6 +737,62 @@ window.__arcade = {
   },
 };
 
+/**
+ * Permite configurar Moodle por enlace, útil en Pico 4:
+ *   ?ids=101,102&server=https://moodle...&start=1
+ * La clave se puede pasar en el hash (#key=...) para que no viaje al servidor;
+ * se borra de la barra de direcciones después de guardarla.
+ */
+function applyUrlConfig() {
+  const params = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const config = loadMoodleConfig();
+  let changed = false;
+
+  const server = params.get('server') || params.get('moodle');
+  if (server) {
+    config.base = server;
+    changed = true;
+  }
+  const key = params.get('key') || hash.get('key');
+  if (key) {
+    config.key = key;
+    changed = true;
+  }
+  const ids = params.get('ids');
+  if (ids) {
+    config.ids = ids;
+    changed = true;
+  }
+  const quiz = params.get('quiz');
+  if (quiz) {
+    config.quiz = quiz;
+    changed = true;
+  }
+  if (changed) saveMoodleConfig(config);
+
+  const lang = params.get('lang');
+  if (lang === 'eu' || lang === 'es') {
+    setLang(lang);
+  }
+
+  if (window.location.hash) {
+    window.history.replaceState(
+      null,
+      '',
+      window.location.pathname + window.location.search
+    );
+  }
+
+  return params.get('start') === '1' || params.get('play') === '1';
+}
+
+const autostartMoodle = applyUrlConfig();
+
 renderDots();
 applyStaticText();
 showMenu();
+
+if (autostartMoodle) {
+  setTimeout(() => quickMoodle(), 250);
+}

@@ -4,6 +4,7 @@ const DEFAULTS = {
   base: 'https://moodle.lhusurbil.eus',
   key: '',
   ids: '',
+  quiz: '',
 };
 
 export function loadMoodleConfig() {
@@ -13,6 +14,7 @@ export function loadMoodleConfig() {
       base: String(raw.base || DEFAULTS.base).replace(/\/+$/, ''),
       key: String(raw.key || ''),
       ids: String(raw.ids || ''),
+      quiz: String(raw.quiz || ''),
     };
   } catch {
     return { ...DEFAULTS };
@@ -26,6 +28,7 @@ export function saveMoodleConfig(config) {
       .replace(/\/+$/, ''),
     key: String(config.key || '').trim(),
     ids: String(config.ids || '').trim(),
+    quiz: String(config.quiz || '').trim(),
   };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
@@ -101,14 +104,20 @@ export function normalizeQuestion(raw) {
 }
 
 export async function fetchMoodleQuestions(config) {
+  const quiz = String(config.quiz || '').trim();
   const ids = parseIds(config.ids);
-  if (!ids.length) throw new Error('missing-ids');
+  if (!quiz && !ids.length) throw new Error('missing-ids');
 
   const base = String(config.base || DEFAULTS.base)
     .trim()
     .replace(/\/+$/, '');
   const url = new URL(`${base}/local/lwpd/questions.php`);
-  url.searchParams.set('ids', ids.join(','));
+
+  if (quiz) {
+    url.searchParams.set('quiz', quiz);
+  } else {
+    url.searchParams.set('ids', ids.join(','));
+  }
 
   const headers = {};
   if (config.key) headers['X-LWPD-Key'] = config.key;

@@ -1,31 +1,38 @@
+<?php
 /**
  * Endpoint de solo lectura para "Escuadrón Web".
  *
- * Devuelve preguntas del banco de Moodle en JSON plano:
+ * Dos modos:
+ *   GET /local/lwpd/questions.php?quiz=123
  *   GET /local/lwpd/questions.php?ids=101,102,103
- *   Header: X-LWPD-Key: TU_CLAVE
  *
- * Respuesta:
- *   {"questions":[{"id":101,"q":"...","options":["a","b"],"correct":0,"why":"..."}]}
+ * La clave es opcional; si se define, debe enviarse en la cabecera
+ * X-LWPD-Key (o en ?key= para pruebas desde el navegador).
  *
- * Solo admite preguntas de tipo multichoice y truefalse.
+ * Seguridad: el endpoint NO sirve preguntas sueltas de todo el banco. Solo
+ * devuelve preguntas que pertenezcan a los cuestionarios configurados en
+ * LWPD_QUIZ_IDS (y que estén visibles). Con LWPD_ALLOWED_IDS se puede añadir
+ * una lista blanca extra.
  */
 
 /* -------------------------------------------------------------------------
- * CONFIGURACIÓN OBLIGATORIA
+ * CONFIGURACIÓN
  * ---------------------------------------------------------------------- */
 
-// Clave larga y aleatoria. Sin esto el endpoint queda desactivado.
+// Cuestionarios permitidos, por cmid (el id de la URL mod/quiz/view.php?id=NNN).
+// Ejemplo: define('LWPD_QUIZ_IDS', '1234,5678');
+// Es la forma recomendada de limitar el endpoint.
+define('LWPD_QUIZ_IDS', '');
+
+// Lista blanca adicional de IDs de pregunta (opcional).
+define('LWPD_ALLOWED_IDS', '');
+
+// Clave opcional. Si está vacía, no se pide clave.
 define('LWPD_KEY', '');
 
-// Origen permitido para el navegador. Ejemplo:
-//   define('LWPD_ALLOWED_ORIGIN', 'https://jrubioastigarraga.github.io');
-// Si se deja vacío, se acepta cualquier origen (menos seguro).
+// Origen permitido para el navegador (opcional).
+// Ejemplo: define('LWPD_ALLOWED_ORIGIN', 'https://jrubioastigarraga.github.io');
 define('LWPD_ALLOWED_ORIGIN', '');
-
-// Lista blanca opcional de IDs. Si se rellena, solo se sirven esos IDs.
-// Ejemplo: define('LWPD_ALLOWED_IDS', '101,102,103,104');
-define('LWPD_ALLOWED_IDS', '');
 
 /* ---------------------------------------------------------------------- */
 
@@ -49,6 +56,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
 }
 
 require_once(__DIR__ . '/../../config.php');
+require_once($CFG->dirroot . '/course/lib.php');
+
+/* ------------------------------------------------------------------ utils */
+
+function lwpd_ids($text) {
+    $out = [];
+    foreach (preg_split('/[^0-9]+/', (string)$text) as $chunk) {
+        if ($chunk !== '') {
+            $out[] = (int)$chunk;
+        }
+    }
+    return array_values(array_unique($out));
+}
 
 function lwpd_plain($html) {
     $text = html_entity_decode(strip_tags((string)$html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
@@ -62,75 +82,86 @@ function lwpd_fail($code, $status = 400) {
     exit;
 }
 
-// Sin clave configurada no se sirve nada.
-if (LWPD_KEY === '') {
-    lwpd_fail('endpoint-not-configured', 503);
-}
-
-// Origen: si hay cabecera Origin y no coincide, se rechaza.
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-if ($allowedOrigin !== '' && $origin !== '' && $origin !== $allowedOrigin) {
-    lwpd_fail('forbidden-origin', 403);
-}
-
-// La clave viaja en cabecera (no en la URL) para no dejarla en los logs.
-$key = $_SERVER['HTTP_X_LWPD_KEY'] ?? '';
-if ($key === '') {
-    $key = optional_param('key', '', PARAM_TEXT);
-}
-if (!hash_equals(LWPD_KEY, $key)) {
-    lwpd_fail('forbidden', 403);
-}
-
-$raw = optional_param('ids', '', PARAM_TEXT);
-$ids = [];
-foreach (preg_split('/[^0-9]+/', $raw) as $chunk) {
-    if ($chunk !== '') {
-        $ids[] = (int)$chunk;
+/**
+ * Comprueba que el cuestionario existe, está visible y su curso también.
+ * Devuelve el registro de quiz o null.
+ */
+function lwpd_visible_quiz($cmid) {
+    $cm = get_coursemodule_from_id('quiz', (int)$cmid, 0, false, IGNORE_MISSING);
+    if (!$cm || empty($cm->visible) || !empty($cm->deletioninprogress)) {
+        return null;
     }
-}
-$ids = array_slice(array_values(array_unique($ids)), 0, 30);
-if (!$ids) {
-    lwpd_fail('missing-ids');
-}
-
-$allowedIds = array_values(array_filter(array_map('intval', preg_split('/[^0-9]+/', LWPD_ALLOWED_IDS))));
-if ($allowedIds) {
-    $ids = array_values(array_intersect($ids, $allowedIds));
-    if (!$ids) {
-        lwpd_fail('id-not-allowed', 403);
+    $course = get_course($cm->course);
+    if (!$course || empty($course->visible)) {
+        return null;
     }
+    $quiz = $GLOBALS['DB']->get_record('quiz', ['id' => $cm->instance], '*', IGNORE_MISSING);
+    return $quiz ?: null;
 }
 
-$dbman = $DB->get_manager();
-$hasentries = $dbman->table_exists('question_bank_entries');
-$hasversions = $dbman->table_exists('question_versions');
+/**
+ * IDs de las preguntas fijas de un cuestionario.
+ * Soporta Moodle 3.x (quiz_slots.questionid) y 4.x (question_references).
+ */
+function lwpd_quiz_question_ids($quizid) {
+    global $DB;
+    $dbman = $DB->get_manager();
+    $ids = [];
 
-$questions = [];
-
-foreach ($ids as $id) {
-    $question = $DB->get_record('question', ['id' => $id], '*', IGNORE_MISSING);
-
-    // Si el ID es de la entrada del banco de preguntas, busca su última versión.
-    if (!$question && $hasentries && $hasversions) {
-        $sql = "SELECT q.*
-                  FROM {question_versions} v
-                  JOIN {question} q ON q.id = v.questionid
-                 WHERE v.questionbankentryid = :entryid
-              ORDER BY v.version DESC";
-        $question = $DB->get_record_sql($sql, ['entryid' => $id], IGNORE_MULTIPLE);
+    if ($dbman->field_exists('quiz_slots', 'questionid')) {
+        $sql = "SELECT DISTINCT questionid
+                  FROM {quiz_slots}
+                 WHERE quizid = ? AND questionid > 0";
+        foreach ($DB->get_records_sql($sql, [$quizid]) as $row) {
+            $ids[] = (int)$row->questionid;
+        }
+        return array_values(array_unique($ids));
     }
 
-    if (!$question) {
-        continue;
+    if (!$dbman->table_exists('question_references')) {
+        return [];
     }
+
+    $sql = "SELECT qr.questionbankentryid, qr.version
+              FROM {quiz_slots} qs
+              JOIN {question_references} qr
+                ON qr.itemid = qs.id
+               AND qr.component = 'mod_quiz'
+               AND qr.questionarea = 'slot'
+             WHERE qs.quizid = ?";
+    $refs = $DB->get_records_sql($sql, [$quizid]);
+
+    foreach ($refs as $ref) {
+        if ($ref->version) {
+            $qid = $DB->get_field('question_versions', 'questionid', [
+                'questionbankentryid' => $ref->questionbankentryid,
+                'version' => $ref->version,
+            ], IGNORE_MISSING);
+        } else {
+            $sqlv = "SELECT questionid
+                       FROM {question_versions}
+                      WHERE questionbankentryid = ?
+                   ORDER BY version DESC";
+            $qid = $DB->get_field_sql($sqlv, [$ref->questionbankentryid], IGNORE_MULTIPLE);
+        }
+        if ($qid) {
+            $ids[] = (int)$qid;
+        }
+    }
+
+    return array_values(array_unique($ids));
+}
+
+function lwpd_question_payload($question) {
+    global $DB;
+
     if (!in_array($question->qtype, ['multichoice', 'truefalse'], true)) {
-        continue;
+        return null;
     }
 
     $answers = $DB->get_records('question_answers', ['question' => $question->id], 'id ASC');
     if (count($answers) < 2) {
-        continue;
+        return null;
     }
 
     $options = [];
@@ -145,13 +176,85 @@ foreach ($ids as $id) {
         }
     }
 
-    $questions[] = [
+    return [
         'id' => (int)$question->id,
         'q' => lwpd_plain($question->questiontext),
         'options' => $options,
         'correct' => $correct,
         'why' => lwpd_plain($question->generalfeedback),
     ];
+}
+
+/* -------------------------------------------------------------- seguridad */
+
+$quizCms = lwpd_ids(LWPD_QUIZ_IDS);
+$extraIds = lwpd_ids(LWPD_ALLOWED_IDS);
+
+if (!$quizCms && !$extraIds) {
+    lwpd_fail('endpoint-not-configured', 503);
+}
+
+if (LWPD_KEY !== '') {
+    $key = $_SERVER['HTTP_X_LWPD_KEY'] ?? optional_param('key', '', PARAM_TEXT);
+    if (!hash_equals(LWPD_KEY, $key)) {
+        lwpd_fail('forbidden', 403);
+    }
+}
+
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if ($allowedOrigin !== '' && $origin !== '' && $origin !== $allowedOrigin) {
+    lwpd_fail('forbidden-origin', 403);
+}
+
+/* ------------------------------------------------------------ resolución */
+
+$quizParam = optional_param('quiz', 0, PARAM_INT);
+$requestedIds = lwpd_ids(optional_param('ids', '', PARAM_TEXT));
+
+$allowedQuestionIds = [];
+$quizQuestionMap = [];
+
+foreach ($quizCms as $cmid) {
+    $quiz = lwpd_visible_quiz($cmid);
+    if (!$quiz) {
+        continue;
+    }
+    $qids = lwpd_quiz_question_ids($quiz->id);
+    $quizQuestionMap[$cmid] = $qids;
+    $allowedQuestionIds = array_merge($allowedQuestionIds, $qids);
+}
+$allowedQuestionIds = array_values(array_unique(array_merge($allowedQuestionIds, $extraIds)));
+
+if ($quizParam) {
+    // Modo "ID de cuestionario": devuelve todas sus preguntas.
+    if (!in_array((int)$quizParam, $quizCms, true)) {
+        lwpd_fail('quiz-not-allowed', 403);
+    }
+    if (!isset($quizQuestionMap[(int)$quizParam])) {
+        lwpd_fail('quiz-not-visible', 403);
+    }
+    $requestedIds = $quizQuestionMap[(int)$quizParam];
+} else {
+    if (!$requestedIds) {
+        lwpd_fail('missing-ids');
+    }
+    // Solo se permiten preguntas que estén en los cuestionarios autorizados.
+    $requestedIds = array_values(array_intersect($requestedIds, $allowedQuestionIds));
+    if (!$requestedIds) {
+        lwpd_fail('id-not-allowed', 403);
+    }
+}
+
+$questions = [];
+foreach ($requestedIds as $qid) {
+    $question = $DB->get_record('question', ['id' => $qid], '*', IGNORE_MISSING);
+    if (!$question) {
+        continue;
+    }
+    $payload = lwpd_question_payload($question);
+    if ($payload) {
+        $questions[] = $payload;
+    }
 }
 
 echo json_encode(['questions' => $questions], JSON_UNESCAPED_UNICODE);

@@ -64,8 +64,12 @@ const STRINGS = {
     moodleTitle: 'Preguntas de Moodle',
     moodleServer: 'Servidor',
     moodleKey: 'Clave de acceso',
+    moodleQuiz: 'Cuestionario (cmid)',
+    moodleQuizHint:
+      'ID del cuestionario en Moodle (mod/quiz/view.php?id=...). Si lo pones, se cargan todas sus preguntas.',
     moodleIds: 'IDs de preguntas',
-    moodleIdsHint: 'Sepáralos por comas. Se usarán como preguntas de la partida.',
+    moodleIdsHint:
+      'Solo si no usas el ID del cuestionario. Sepáralos por comas.',
     moodlePlay: 'Cargar y jugar',
     moodleTest: 'Probar',
     moodleClose: 'Cerrar',
@@ -73,8 +77,9 @@ const STRINGS = {
     moodleLoading: 'Cargando preguntas…',
     moodleError: 'No se han podido cargar las preguntas.',
     moodleReady: '{n} preguntas cargadas.',
-    moodleNeedIds: 'Escribe al menos una ID.',
+    moodleNeedIds: 'Escribe el ID del cuestionario o al menos una ID.',
     moodleNoConfig: 'Configura Moodle para jugar con tus preguntas.',
+    moodleHint: 'Pulsa Moodle en la barra superior antes de entrar en VR.',
     moodleMode: 'Moodle · {n} preguntas',
     moodleQuestion: 'Pregunta {n} de {total}',
     moodleDone: 'MOODLE COMPLETADO',
@@ -143,8 +148,12 @@ const STRINGS = {
     moodleTitle: 'Moodleko galderak',
     moodleServer: 'Zerbitzaria',
     moodleKey: 'Sarbide-gakoa',
+    moodleQuiz: 'Galdetegia (cmid)',
+    moodleQuizHint:
+      'Moodlen duen galdetegiaren IDa (mod/quiz/view.php?id=...). Hau betetzen baduzu, galdetegiaren galdera guztiak kargatuko dira.',
     moodleIds: 'Galderen IDak',
-    moodleIdsHint: 'Banatu komaz. Partidako galderak izango dira.',
+    moodleIdsHint:
+      'Soilik galdetegiaren IDa erabiltzen ez baduzu. Banatu komaz.',
     moodlePlay: 'Kargatu eta jolastu',
     moodleTest: 'Probatu',
     moodleClose: 'Itxi',
@@ -152,8 +161,9 @@ const STRINGS = {
     moodleLoading: 'Galderak kargatzen…',
     moodleError: 'Ezin izan dira galderak kargatu.',
     moodleReady: '{n} galdera kargatuta.',
-    moodleNeedIds: 'Idatzi gutxienez ID bat.',
+    moodleNeedIds: 'Idatzi galdetegiaren IDa edo gutxienez ID bat.',
     moodleNoConfig: 'Konfiguratu Moodle zure galderak erabiltzeko.',
+    moodleHint: 'Sakatu Moodle goiko barran VRra sartu aurretik.',
     moodleMode: 'Moodle · {n} galdera',
     moodleQuestion: '{n}. galdera, {total}tik',
     moodleDone: 'MOODLE AMAITUTA',
@@ -243,6 +253,8 @@ export function applyStaticText() {
   set('moodle-title', t('moodleTitle'));
   set('moodle-url-label', t('moodleServer'));
   set('moodle-key-label', t('moodleKey'));
+  set('moodle-quiz-label', t('moodleQuiz'));
+  set('moodle-quiz-hint', t('moodleQuizHint'));
   set('moodle-ids-label', t('moodleIds'));
   set('moodle-help', t('moodleIdsHint'));
   set('moodle-play', t('moodlePlay'));

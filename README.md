@@ -59,13 +59,18 @@ El botón **ES / EU** de la barra superior cambia toda la interfaz: menú, panel
 
 ## Preguntas desde Moodle
 
-En la pantalla inicial, el botón **Moodle** permite cargar preguntas concretas por su ID antes de jugar:
+En la pantalla inicial, el botón **Moodle** permite cargar preguntas de un cuestionario concreto antes de jugar:
 
-1. Instala una sola vez el endpoint `moodle/local/lwpd/questions.php` en tu Moodle (ver [`moodle/README.md`](/jrubioastigarraga/la-web-por-dentro/blob/main/moodle/README.md)).
-2. En el juego, pulsa **Moodle**, escribe el servidor (`https://moodle.lhusurbil.eus`), la **clave obligatoria** y los IDs separados por comas.
-3. **Cargar y jugar**: el juego pide esas preguntas, las reparte y empieza la partida.
+1. Instala una sola vez el endpoint `moodle/local/lwpd/questions.php` en tu Moodle y configura allí los cuestionarios permitidos (ver [`moodle/README.md`](/jrubioastigarraga/la-web-por-dentro/blob/main/moodle/README.md)).
+2. En el juego, pulsa **Moodle** y escribe:
+   - el servidor (`https://moodle.lhusurbil.eus`),
+   - el **ID del cuestionario** (`cmid`) o, si lo prefieres, los IDs de preguntas,
+   - la clave solo si la has configurado.
+3. **Cargar y jugar**: el juego pide las preguntas de ese cuestionario, las reparte y empieza.
 
-Cada ID se convierte en **una pantalla (`STAGE`) independiente**: si pones 2 IDs, jugarás 2 pantallas; si pones 5, 5 pantallas.
+Cada pregunta se convierte en **una pantalla (`STAGE`) independiente**. Si el cuestionario tiene 5 preguntas, jugarás 5 pantallas.
+
+También puedes configurarlo por enlace, cómodo en Pico 4: `?quiz=1234&start=1` (y `#key=...` solo la primera vez).
 
 Moodle no ofrece un Web Service estándar para pedir una pregunta por ID, por eso se usa ese pequeño endpoint de solo lectura (con CORS y clave opcional). Solo se admiten preguntas de tipo **multichoice** y **truefalse**.
 
