@@ -12,6 +12,13 @@ import { HUD } from './hud.js';
 import { buildMenu } from './menu.js';
 import { buildArcade } from './arcade/game.js';
 import { SECTORS } from './arcade/questions.js';
+import { applyStaticText, setLang, t, sectorTitle } from './i18n.js';
+import {
+  fetchMoodleQuestions,
+  loadMoodleConfig,
+  parseIds,
+  saveMoodleConfig,
+} from './moodle.js';
 
 /* ------------------------------------------------------------ persistencia */
 
@@ -41,7 +48,7 @@ const renderer = new THREE.WebGLRenderer({
   antialias: true,
   powerPreference: 'high-performance',
 });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.xr.enabled = true;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -388,10 +395,113 @@ function renderDots() {
   for (let i = 0; i < SECTORS.length; i++) {
     const dot = document.createElement('span');
     dot.className = i < save.sectors ? 'dot on' : 'dot';
-    dot.title = SECTORS[i].title;
+    dot.title = sectorTitle(SECTORS[i]);
     dotsEl.appendChild(dot);
   }
 }
+
+/* --------------------------------------------------------------- idioma */
+
+document.getElementById('langs')?.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-lang]');
+  if (!button) return;
+  setLang(button.dataset.lang);
+  applyStaticText();
+  renderDots();
+  if (state.screen === 'menu') showMenu();
+  else if (game) game.refreshLanguage();
+});
+
+/* --------------------------------------------------------------- moodle */
+
+const modal = document.getElementById('moodle-modal');
+const moodleStatus = document.getElementById('moodle-status');
+const urlInput = document.getElementById('moodle-url');
+const keyInput = document.getElementById('moodle-key');
+const idsInput = document.getElementById('moodle-ids');
+
+function setMoodleStatus(text, kind = '') {
+  if (!moodleStatus) return;
+  moodleStatus.textContent = text || '';
+  moodleStatus.className = `status${kind ? ` ${kind}` : ''}`;
+}
+
+function openMoodle() {
+  const config = loadMoodleConfig();
+  if (urlInput) urlInput.value = config.base;
+  if (keyInput) keyInput.value = config.key;
+  if (idsInput) idsInput.value = config.ids;
+  setMoodleStatus('');
+  if (modal) modal.hidden = false;
+  setTimeout(() => idsInput?.focus(), 60);
+}
+
+function closeMoodle() {
+  if (modal) modal.hidden = true;
+}
+
+async function runMoodle(play) {
+  const config = saveMoodleConfig({
+    base: urlInput?.value,
+    key: keyInput?.value,
+    ids: idsInput?.value,
+  });
+
+  if (!parseIds(config.ids).length) {
+    setMoodleStatus(t('moodleNeedIds'), 'error');
+    return;
+  }
+
+  setMoodleStatus(t('moodleLoading'));
+  try {
+    const questions = await fetchMoodleQuestions(config);
+    setMoodleStatus(t('moodleReady', { n: questions.length }), 'ok');
+    if (!play) return;
+
+    const sector = {
+      id: 'moodle',
+      title: 'Moodle',
+      tag: 'Moodle',
+      tone: '#4de2c5',
+      color: 0x4de2c5,
+      brief: t('moodleMode', { n: questions.length }),
+      questions,
+    };
+
+    closeMoodle();
+    startGame({
+      moodle: true,
+      sectors: [sector],
+      perSector: questions.length,
+    });
+  } catch (error) {
+    console.error(error);
+    setMoodleStatus(`${t('moodleError')} (${error.message})`, 'error');
+  }
+}
+
+document.getElementById('btn-moodle')?.addEventListener('click', () => {
+  initAudio();
+  openMoodle();
+});
+
+document.getElementById('moodle-close')?.addEventListener('click', closeMoodle);
+
+document.getElementById('moodle-test')?.addEventListener('click', () => {
+  runMoodle(false);
+});
+
+document.getElementById('moodle-local')?.addEventListener('click', () => {
+  closeMoodle();
+  initAudio();
+  startGame({ sector: null });
+});
+
+document.getElementById('moodle-form')?.addEventListener('submit', (event) => {
+  event.preventDefault();
+  initAudio();
+  runMoodle(true);
+});
 
 document.getElementById('btn-back')?.addEventListener('click', () => {
   initAudio();
@@ -399,7 +509,7 @@ document.getElementById('btn-back')?.addEventListener('click', () => {
 });
 
 document.getElementById('btn-reset')?.addEventListener('click', () => {
-  const ok = window.confirm('¿Borrar el récord y los sectores despejados?');
+  const ok = window.confirm(t('resetConfirm'));
   if (!ok) return;
   save.best = 0;
   save.sectors = 0;
@@ -414,6 +524,10 @@ document.getElementById('btn-reset')?.addEventListener('click', () => {
 
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
+    if (modal && !modal.hidden) {
+      closeMoodle();
+      return;
+    }
     if (state.screen !== 'menu') showMenu();
     return;
   }
@@ -577,4 +691,5 @@ window.__arcade = {
 };
 
 renderDots();
+applyStaticText();
 showMenu();

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { makeButton, makeCard, makeGlow, makeText } from './util.js';
 import { SECTORS } from './arcade/questions.js';
 import { ScrollingWorld, makePlane } from './arcade/art.js';
+import { t, sectorTitle, sectorTag } from './i18n.js';
 
 /**
  * Pantalla de inicio: mar en scroll, título y una tarjeta por asignatura
@@ -55,7 +56,7 @@ export function buildMenu(api) {
   glow.position.set(0, 1.52, -1.75);
   group.add(glow);
 
-  const subtitle = makeText('LA WEB POR DENTRO · ARCADE DAW', {
+  const subtitle = makeText(t('menuSubtitle'), {
     height: 0.019,
     weight: 700,
     color: '#4de2c5',
@@ -63,7 +64,7 @@ export function buildMenu(api) {
   subtitle.position.set(0, 1.5, -1.5);
   group.add(subtitle);
 
-  const play = makeButton('▶  JUGAR CAMPAÑA', {
+  const play = makeButton(`▶  ${t('play')}`, {
     w: 0.52,
     h: 0.09,
     color: '#4de2c5',
@@ -76,7 +77,7 @@ export function buildMenu(api) {
   playGlow.position.set(0, 1.3, -1.55);
   group.add(playGlow);
 
-  const practiceLabel = makeText('PRACTICAR UN SECTOR', {
+  const practiceLabel = makeText(t('practice').toUpperCase(), {
     height: 0.016,
     weight: 700,
     color: '#8296ad',
@@ -90,9 +91,9 @@ export function buildMenu(api) {
     const card = makeCard({
       w: 0.355,
       h: 0.135,
-      title: `${i + 1} · ${sector.title}`,
-      sub: sector.tag,
-      foot: `${sector.questions.length} preguntas`,
+      title: `${i + 1} · ${sectorTitle(sector)}`,
+      sub: sectorTag(sector),
+      foot: `${sector.questions.length} ${t('questions')}`,
       tone: sector.tone,
       align: 'center',
       bg: 'rgba(8,15,26,0.92)',
@@ -141,11 +142,11 @@ export function buildMenu(api) {
   });
 
   api.setHud(
-    'ESCUADRÓN WEB',
-    'Derriba la respuesta correcta antes de que cruce la línea. Si disparas a una equivocada, pierdes una vida. Tres vidas y cinco sectores.',
+    t('menuTitle'),
+    t('menuBody'),
     api.best > 0
-      ? `Récord personal: ${api.best} pts · ${api.bestSectors}/5 sectores despejados`
-      : 'Campaña: 5 sectores · 6 preguntas por sector',
+      ? `${t('record')}: ${api.best} pts · ${api.bestSectors}/5 ${t('sectorsCleared')}`
+      : t('menuFoot'),
     '#4de2c5'
   );
 

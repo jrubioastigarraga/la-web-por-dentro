@@ -23,8 +23,51 @@
         <span class="logo" aria-hidden="true"></span>
         <span>Escuadrón Web<small>DAW · arcade WebXR</small></span>
       </div>
-      <div class="dots" id="dots" aria-label="Progreso del juego"></div>
+      <div class="top-actions">
+        <div class="langs" id="langs" aria-label="Idioma">
+          <button class="lang" type="button" data-lang="es">ES</button>
+          <button class="lang" type="button" data-lang="eu">EU</button>
+        </div>
+        <button class="ui compact" type="button" id="btn-moodle">Moodle</button>
+        <div class="dots" id="dots" aria-label="Progreso del juego"></div>
+      </div>
     </header>
+
+    <div id="moodle-modal" class="modal" hidden>
+      <form class="modal-card" id="moodle-form">
+        <h2 id="moodle-title">Preguntas de Moodle</h2>
+        <label for="moodle-url" id="moodle-url-label">Servidor</label>
+        <input
+          id="moodle-url"
+          type="url"
+          inputmode="url"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="https://moodle.lhusurbil.eus"
+        />
+        <label for="moodle-key" id="moodle-key-label">Clave (opcional)</label>
+        <input id="moodle-key" type="text" autocomplete="off" spellcheck="false" />
+        <label for="moodle-ids" id="moodle-ids-label">IDs de preguntas</label>
+        <textarea
+          id="moodle-ids"
+          rows="2"
+          inputmode="numeric"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="101, 102, 103"
+        ></textarea>
+        <p class="help" id="moodle-help">
+          Sepáralos por comas. Se usarán como preguntas de la partida.
+        </p>
+        <p class="status" id="moodle-status" role="status"></p>
+        <div class="modal-actions">
+          <button class="ui" type="button" id="moodle-local">Jugar con banco local</button>
+          <button class="ui" type="button" id="moodle-test">Probar</button>
+          <button class="ui primary" type="submit" id="moodle-play">Cargar y jugar</button>
+          <button class="ui" type="button" id="moodle-close">Cerrar</button>
+        </div>
+      </form>
+    </div>
 
     <div id="controls">
       <button class="ui" id="btn-back" hidden>← Menú</button>

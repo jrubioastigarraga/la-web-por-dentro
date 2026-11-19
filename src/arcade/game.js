@@ -9,6 +9,12 @@ import {
 } from '../util.js';
 import { SECTORS, QUESTIONS_PER_SECTOR } from './questions.js';
 import {
+  t,
+  sectorTitle,
+  sectorBrief,
+  localizeQuestion,
+} from '../i18n.js';
+import {
   ScrollingWorld,
   GamePanel,
   makeBezel,
@@ -20,8 +26,7 @@ import {
 
 /* --------------------------------------------------------------- constantes */
 
-const LANES = [-0.4, 0, 0.4];
-const ENEMY_KINDS = ['red', 'amber', 'purple'];
+const ENEMY_KINDS = ['red', 'amber', 'purple', 'blue'];
 
 const SPAWN_Y = 1.38;
 const LINE_Y = 1.13;
@@ -31,7 +36,7 @@ const TARGET_Z = -1.52;
 const BULLET_Z = -1.435;
 const BULLET_SPEED = 2.6;
 const FIRE_COOLDOWN = 0.15;
-const SHIP_RANGE = 0.5;
+const SHIP_RANGE = 0.52;
 
 const MAX_LIVES = 3;
 
@@ -159,6 +164,8 @@ export class Arcade {
     this.api = api;
     this.practiceSector =
       typeof opts.sector === 'number' ? opts.sector : null;
+    this.isMoodle = Boolean(opts.moodle);
+    this.retryOpts = opts;
 
     this.group = new THREE.Group();
     this.world = new THREE.Group();
@@ -237,6 +244,7 @@ export class Arcade {
     this.fx = new Fx(this.fxLayer);
 
     this.targetX = 0;
+    this.hitX = 0.17;
     this.firing = false;
     this.cooldown = 0;
     this.bullets = [];
@@ -252,9 +260,16 @@ export class Arcade {
     this.queue = [];
     this.state = 'intro';
     this.sectorsDone = 0;
+    this.sectors =
+      Array.isArray(opts.sectors) && opts.sectors.length
+        ? opts.sectors
+        : SECTORS;
+    this.perSector = Number.isInteger(opts.perSector)
+      ? Math.max(1, opts.perSector)
+      : QUESTIONS_PER_SECTOR;
     this.order =
       this.practiceSector === null
-        ? SECTORS.map((_, i) => i)
+        ? this.sectors.map((_, i) => i)
         : [this.practiceSector];
     this.sectorPos = 0;
 
@@ -267,11 +282,15 @@ export class Arcade {
   get sector() {
     const index =
       this.order[this.sectorPos] ?? this.order[this.order.length - 1];
-    return SECTORS[index];
+    return this.sectors[index];
   }
 
   get isPractice() {
     return this.practiceSector !== null;
+  }
+
+  get single() {
+    return this.isPractice || this.isMoodle;
   }
 
   isPlaying() {
@@ -279,21 +298,34 @@ export class Arcade {
   }
 
   header() {
-    if (this.isPractice) return `PRÁCTICA · ${this.sector.title.toUpperCase()}`;
-    return `SECTOR ${this.sectorPos + 1}/${this.order.length} · ${this.sector.title.toUpperCase()}`;
+    const title = sectorTitle(this.sector).toUpperCase();
+    if (this.isMoodle) return `MOODLE · ${this.queue.length} ${t('questions').toUpperCase()}`;
+    if (this.isPractice) return `${t('practiceName')} · ${title}`;
+    return `${t('stageName')} ${this.sectorPos + 1}/${this.order.length} · ${title}`;
   }
 
   refreshStatus() {
+    const title = sectorTitle(this.sector);
     this.status.setStats({
-      stage: this.isPractice
-        ? `PRÁCTICA ${this.sector.title}`
-        : `STAGE ${this.sectorPos + 1} · ${this.sector.title}`,
+      stage: this.isMoodle
+        ? `MOODLE · ${this.queue.length}`
+        : this.isPractice
+          ? `${t('practiceName')} ${title}`
+          : `${t('stageName')} ${this.sectorPos + 1} · ${title}`,
       score: this.score,
       lives: this.lives,
       question: this.qIndex,
       total: this.queue.length,
       tone: this.sector.tone,
     });
+  }
+
+  refreshLanguage() {
+    this.status.invalidate();
+    this.refreshStatus();
+    if (this.state === 'playing' && this.current) {
+      this.ask(this.current.text);
+    }
   }
 
   ask(text) {
@@ -311,8 +343,8 @@ export class Arcade {
     this.qIndex = 0;
     this.sea.setTint(SEA_MOODS[this.sectorPos % SEA_MOODS.length]);
     this.queue = shuffle(sector.questions)
-      .slice(0, QUESTIONS_PER_SECTOR)
-      .map(shuffleQuestion);
+      .slice(0, this.perSector)
+      .map((question) => shuffleQuestion(localizeQuestion(question)));
     this.state = 'intro';
     this.clearTargets();
     this.fx.clear();
@@ -322,11 +354,15 @@ export class Arcade {
     }
     this.bullets = [];
     this.refreshStatus();
-    this.ask(sector.brief);
+    this.ask(sectorBrief(sector));
 
     this.banner(
-      this.isPractice ? 'PRÁCTICA' : `STAGE ${this.sectorPos + 1}`,
-      sector.title.toUpperCase(),
+      this.isMoodle
+        ? 'MOODLE'
+        : this.isPractice
+          ? t('practiceName')
+          : `${t('stageName')} ${this.sectorPos + 1}`,
+      sectorTitle(sector).toUpperCase(),
       sector.tone,
       1.25
     );
@@ -351,35 +387,48 @@ export class Arcade {
   }
 
   spawnWave() {
-    const picks = shuffle([0, 1, 2]);
+    const count = this.current.options.length;
+    const spread = 0.45;
+    const lanes =
+      count === 1
+        ? [0]
+        : Array.from(
+            { length: count },
+            (_, i) => -spread + (2 * spread * i) / (count - 1)
+          );
+    const cardW = count >= 4 ? 0.272 : 0.33;
+    const planeSize = count >= 4 ? 0.17 : 0.19;
+    const picks = shuffle(Array.from({ length: count }, (_, i) => i));
+
+    this.hitX = count >= 4 ? 0.14 : 0.17;
 
     picks.forEach((lane, i) => {
       const isCorrect = i === this.current.correct;
-      const color = ENEMY_KINDS[lane];
+      const color = ENEMY_KINDS[lane % ENEMY_KINDS.length];
 
       const holder = new THREE.Group();
-      const plane = makePlane(color, 0.19);
+      const plane = makePlane(color, planeSize);
       plane.rotation.z = Math.PI;
       holder.add(plane);
 
       const label = makeCard({
-        w: 0.33,
-        h: 0.066,
+        w: cardW,
+        h: 0.06,
         title: this.current.options[i],
         align: 'center',
-        tone: SECTORS[this.order[this.sectorPos]].tone,
+        tone: this.sector.tone,
         titleColor: '#f5fbff',
         bg: 'rgba(8,14,24,0.92)',
         border: 'rgba(255,255,255,0.16)',
       });
-      label.position.set(0, -0.135, 0.012);
+      label.position.set(0, -0.122, 0.012);
       holder.add(label);
 
       const target = {
         holder,
         plane,
         label,
-        x: LANES[lane],
+        x: lanes[lane],
         y: SPAWN_Y + 0.05,
         speed: 0.027 + this.sectorPos * 0.0045,
         correct: isCorrect,
@@ -469,7 +518,7 @@ export class Arcade {
       const ahead = point.clone().sub(origin).dot(ray.direction);
       if (ahead <= 0) continue;
       const dist = ray.distanceSqToPoint(point);
-      if (dist < 0.022 && dist < bestDist) {
+      if (dist < 0.018 && dist < bestDist) {
         bestDist = dist;
         best = target;
       }
@@ -523,12 +572,18 @@ export class Arcade {
 
       this.popText(`+${gain}`, target.x, target.y + 0.02, '#7dffcf', 0.024);
       if (this.combo >= 2) {
-        this.popText(`COMBO x${this.combo}`, target.x, target.y - 0.05, '#ffd479', 0.02);
+        this.popText(
+          `${t('combo')} x${this.combo}`,
+          target.x,
+          target.y - 0.05,
+          '#ffd479',
+          0.02
+        );
       }
 
       this.showResultMessage(
         'ok',
-        `¡Derribado! ${this.current.why}  +${gain} pts`
+        `${t('correctKill')} ${this.current.why}  +${gain} ${t('pointsShort')}`
       );
       this.refreshStatus();
 
@@ -539,8 +594,8 @@ export class Arcade {
       });
     } else {
       this.failShot(
-        '¡Ese no era!',
-        `La respuesta correcta era «${this.current.options[this.current.correct]}».`
+        t('wrongKill'),
+        `${t('correctWas')} «${this.current.options[this.current.correct]}».`
       );
     }
   }
@@ -573,8 +628,8 @@ export class Arcade {
   missAnswer() {
     if (this.state !== 'playing') return;
     this.failShot(
-      'Se escapó la respuesta correcta.',
-      `Era «${this.current.options[this.current.correct]}».`
+      t('escaped'),
+      `${t('wasShort')} «${this.current.options[this.current.correct]}».`
     );
   }
 
@@ -590,14 +645,16 @@ export class Arcade {
     this.refreshStatus();
 
     this.banner(
-      'STAGE CLEAR',
-      extra ? '+250 PTS · VIDA EXTRA' : '+250 PTS',
+      t('stageClear'),
+      `+250 ${t('pointsShort')} · ${extra ? t('extraLife') : ''}`.trim(),
       '#4ade80',
       1.6
     );
     this.showResultMessage(
       'ok',
-      `Sector ${this.sectorPos + 1} despejado. +250 pts${extra ? ' y una vida extra' : ''}.`
+      extra
+        ? t('newSectorMessage', { n: this.sectorPos + 1 })
+        : t('newSectorMessage2', { n: this.sectorPos + 1 })
     );
     sfx.win();
 
@@ -613,11 +670,8 @@ export class Arcade {
     this.firing = false;
     this.clearTargets();
     this.fx.clear();
-    this.api.submitScore(this.score, this.sectorsDone);
-    this.showResultMessage(
-      'err',
-      `El escuadrón ha caído con ${this.score} puntos. Vuelve a intentarlo.`
-    );
+    this.api.submitScore(this.score, this.isMoodle ? 0 : this.sectorsDone);
+    this.showResultMessage('err', t('downMessage', { score: this.score }));
     this.showResult(false);
   }
 
@@ -626,12 +680,15 @@ export class Arcade {
     this.firing = false;
     this.clearTargets();
     this.fx.clear();
-    this.api.submitScore(this.score, this.sectorsDone);
+    this.api.submitScore(this.score, this.isMoodle ? 0 : this.sectorsDone);
     this.showResultMessage(
       'ok',
-      this.isPractice
-        ? `Práctica de ${this.sector.title} completada con ${this.score} puntos.`
-        : `Los cinco sectores están despejados con ${this.score} puntos.`
+      this.single
+        ? t('practiceMessage', {
+            sector: sectorTitle(this.sector),
+            score: this.score,
+          })
+        : t('allDoneMessage', { score: this.score })
     );
     this.showResult(true);
   }
@@ -642,14 +699,17 @@ export class Arcade {
       w: 0.78,
       h: 0.36,
       title: win
-        ? this.isPractice
-          ? '✔ PRÁCTICA COMPLETADA'
-          : '✔ CAMPAÑA COMPLETADA'
-        : '✘ ESCUADRÓN DERRIBADO',
-      sub: this.isPractice
-        ? `Práctica de ${this.sector.title}`
-        : `${this.sectorsDone} de ${this.order.length} sectores despejados`,
-      foot: `${this.score} PUNTOS  ·  RÉCORD ${this.api.best}`,
+        ? this.single
+          ? `✔ ${t('practiceDone')}`
+          : `✔ ${t('campaignDone')}`
+        : `✘ ${t('downTitle')}`,
+      sub: this.single
+        ? t('resultPractice', { sector: sectorTitle(this.sector) })
+        : t('resultCampaign', {
+            done: this.sectorsDone,
+            total: this.order.length,
+          }),
+      foot: t('resultFoot', { score: this.score, best: this.api.best }),
       align: 'center',
       tone: win ? '#4ade80' : '#ff5d73',
       bg: 'rgba(8,14,24,0.97)',
@@ -658,13 +718,12 @@ export class Arcade {
     panel.position.set(0, 1.36, -1.5);
     this.group.add(panel);
 
-    const again = makeButton('REINTENTAR', { w: 0.24, h: 0.072 });
+    const again = makeButton(t('retry'), { w: 0.24, h: 0.072 });
     again.position.set(-0.13, 1.11, -1.4);
-    again.userData.onSelect = () =>
-      this.api.startGame({ sector: this.practiceSector });
+    again.userData.onSelect = () => this.api.startGame(this.retryOpts);
     this.group.add(again);
 
-    const menu = makeButton('MENÚ', {
+    const menu = makeButton(t('menuButton'), {
       w: 0.18,
       h: 0.072,
       color: '#93a7bd',
@@ -1004,7 +1063,7 @@ export class Arcade {
       for (const target of this.targets) {
         if (!target.alive) continue;
         if (
-          Math.abs(bullet.x - target.x) < 0.17 &&
+          Math.abs(bullet.x - target.x) < this.hitX &&
           Math.abs(bullet.y - target.y) < 0.085
         ) {
           consumed = true;

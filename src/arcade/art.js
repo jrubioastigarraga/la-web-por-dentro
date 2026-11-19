@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { COLORS, FONT, roundRect } from '../util.js';
+import { t } from '../i18n.js';
 
 /* --------------------------------------------------------------- lienzos */
 
@@ -301,6 +302,14 @@ const PLANE_PALETTES = {
     accent: '#ffe3a3',
     glass: '#c8f4ff',
     prop: 'rgba(235,225,255,0.7)',
+  },
+  blue: {
+    body: '#5eb7f2',
+    shade: '#2c6fa8',
+    dark: '#123a5c',
+    accent: '#ffe9a8',
+    glass: '#d4f8ff',
+    prop: 'rgba(220,245,255,0.7)',
   },
 };
 
@@ -952,6 +961,11 @@ export class GamePanel {
     this.render();
   }
 
+  invalidate() {
+    this.key = '';
+    this.draw();
+  }
+
   render() {
     const key = JSON.stringify([this.stats, this.message]);
     if (key === this.key) return;
@@ -1016,7 +1030,11 @@ export class GamePanel {
     ctx.globalAlpha = 1;
 
     // etiqueta del mensaje
-    const tags = { question: 'PREGUNTA', ok: 'CORRECTO', err: 'FALLO' };
+    const tags = {
+      question: t('tagQuestion'),
+      ok: t('tagCorrect'),
+      err: t('tagFail'),
+    };
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = messageTone;
@@ -1054,7 +1072,7 @@ export class GamePanel {
     // sector
     ctx.fillStyle = '#6f8199';
     ctx.font = `700 10px ${FONT}`;
-    ctx.fillText('SECTOR', 230, 112);
+    ctx.fillText(t('sectorLabel'), 230, 112);
     ctx.fillStyle = accent;
     ctx.font = `800 15px ${FONT}`;
     ctx.fillText(String(stage).toUpperCase(), 230, 134);
@@ -1063,7 +1081,7 @@ export class GamePanel {
     ctx.fillStyle = '#6f8199';
     ctx.font = `700 10px ${FONT}`;
     ctx.textAlign = 'center';
-    ctx.fillText('VIDAS', 676, 112);
+    ctx.fillText(t('livesLabel'), 676, 112);
     for (let i = 0; i < 3; i++) {
       this.drawPlaneIcon(ctx, 648 + i * 28, 134, i < lives, accent, 0.8);
     }
@@ -1072,7 +1090,7 @@ export class GamePanel {
     ctx.textAlign = 'left';
     ctx.fillStyle = '#6f8199';
     ctx.font = `700 10px ${FONT}`;
-    ctx.fillText('PREGUNTAS', 806, 112);
+    ctx.fillText(t('questionsLabel'), 806, 112);
     for (let i = 0; i < total; i++) {
       const x = 806 + i * 27;
       ctx.beginPath();

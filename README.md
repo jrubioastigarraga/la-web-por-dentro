@@ -14,7 +14,7 @@ Arcade de aviones en **3D y realidad virtual** para el ciclo de **Desarrollo de 
 
 [](#cómo-se-juega)
 
-- Cada pregunta lanza **tres aviones** con tres respuestas posibles. Solo una es correcta.
+- Cada pregunta lanza **cuatro aviones** con cuatro respuestas posibles. Solo una es correcta.
 - **Mueve el ratón** para pilotar tu avión y **haz clic** (o pulsa `ESPACIO`) para disparar.
 - Si derribas la respuesta correcta: puntos y siguiente pregunta.
 - Si disparas a una equivocada: **pierdes una vida** y se explica el error.
@@ -34,9 +34,10 @@ Arcade de aviones en **3D y realidad virtual** para el ciclo de **Desarrollo de 
 
 **Realidad virtual**
 
-- Abre la URL en el navegador del visor (probado con Meta Quest) y pulsa **Enter VR**.
+- Abre la URL en el navegador del visor (probado con Meta Quest y **Pico 4**) y pulsa **Enter VR**.
 - Apunta con el mando y pulsa el gatillo para derribar el avión señalado.
 - Todo ocurre en una pantalla holográfica a 1,5 m: sin locomoción artificial y sin mareo.
+- El render se limita a 1,5× de densidad de píxeles para mantener 72/90 fps en visores móviles.
 
 ## Los cinco sectores
 
@@ -50,7 +51,21 @@ Arcade de aviones en **3D y realidad virtual** para el ciclo de **Desarrollo de 
 | 4 | **Bases de datos** | SQL, claves, JOIN, tipos y transacciones | Bases de datos |
 | 5 | **Accesibilidad** | HTML semántico, foco, ARIA, contraste y WCAG | Diseño de interfaces web |
 
-Cada sector tiene **18 preguntas** en su banco. En cada partida se eligen **6 al azar** y también se barajan las opciones, así que se puede rejugar sin repetir.
+Cada sector tiene **10 preguntas** en su banco, con **4 opciones** cada una. En cada partida se eligen **6 al azar** y también se barajan las opciones, así que se puede rejugar sin repetir.
+
+## Idioma
+
+El botón **ES / EU** de la barra superior cambia toda la interfaz: menú, panel de juego, mensajes, botones y avisos. Las preguntas usan su traducción al euskera si existe (`qEu`, `optionsEu`, `whyEu` en `questions.js`) y, si no, se muestran en castellano. Las preguntas cargadas desde Moodle se muestran tal como estén escritas en el banco.
+
+## Preguntas desde Moodle
+
+En la pantalla inicial, el botón **Moodle** permite cargar preguntas concretas por su ID antes de jugar:
+
+1. Instala una sola vez el endpoint `moodle/local/lwpd/questions.php` en tu Moodle (ver [`moodle/README.md`](/jrubioastigarraga/la-web-por-dentro/blob/main/moodle/README.md)).
+2. En el juego, pulsa **Moodle**, escribe el servidor (`https://moodle.lhusurbil.eus`), la clave opcional y los IDs separados por comas.
+3. **Cargar y jugar**: el juego pide esas preguntas, las reparte y empieza la partida.
+
+Moodle no ofrece un Web Service estándar para pedir una pregunta por ID, por eso se usa ese pequeño endpoint de solo lectura (con CORS y clave opcional). Solo se admiten preguntas de tipo **multichoice** y **truefalse**.
 
 ## Modos
 
@@ -58,6 +73,7 @@ Cada sector tiene **18 preguntas** en su banco. En cada partida se eligen **6 al
 
 - **Jugar campaña:** los cinco sectores seguidos con 3 vidas.
 - **Practicar un sector:** una partida corta de una sola asignatura, ideal para repasar en clase.
+- **Moodle:** una partida con las preguntas que indiques por ID.
 
 ## Desarrollo
 
@@ -78,12 +94,16 @@ npm run preview  # sirve dist/
 src/
   main.js              bucle, cámara, raycasting, mandos VR y pantallas
   menu.js              pantalla de inicio y selección de sector
-  hud.js               panel de instrucciones anclado a la cabeza
-  util.js              tarjetas, etiquetas, aviones, audio y utilidades
+  hud.js               panel de instrucciones del menú
+  i18n.js              textos ES/EU y ayudas de traducción
+  moodle.js            carga de preguntas por ID desde Moodle
+  util.js              tarjetas, etiquetas, audio y utilidades
   arcade/
     questions.js       bancos de preguntas de las cinco asignaturas
     art.js             mar con scroll, aviones, marcos, HUD y texturas
     game.js            motor del arcade: oleadas, disparos, vidas y sectores
+moodle/
+  local/lwpd/questions.php   endpoint de solo lectura para Moodle
 ```
 
 ### Añadir o cambiar preguntas
