@@ -61,11 +61,13 @@ El botón **ES / EU** de la barra superior cambia toda la interfaz: menú, panel
 
 En la pantalla inicial, el botón **Moodle** permite cargar preguntas de un cuestionario concreto antes de jugar:
 
-1. Instala una sola vez el endpoint `moodle/local/lwpd/questions.php` en tu Moodle y configura allí los cuestionarios permitidos (ver [`moodle/README.md`](/jrubioastigarraga/la-web-por-dentro/blob/main/moodle/README.md)).
+1. Instala una sola vez el endpoint `moodle/local/lwpd/vrquestions.php` en tu Moodle y configura allí los cuestionarios permitidos (ver [`moodle/README.md`](/jrubioastigarraga/la-web-por-dentro/blob/main/moodle/README.md)).
 2. En el juego, pulsa **Moodle** y escribe:
    - el servidor (`https://moodle.lhusurbil.eus`),
    - el **ID del cuestionario** (`cmid`) o, si lo prefieres, los IDs de preguntas,
    - la clave solo si la has configurado.
+
+   **Si solo permites un cuestionario en el servidor, puedes dejar el cmid vacío**: el juego usa ese automáticamente.
 3. **Cargar y jugar**: el juego pide las preguntas de ese cuestionario, las reparte y empieza.
 
 Cada pregunta se convierte en **una pantalla (`STAGE`) independiente**. Si el cuestionario tiene 5 preguntas, jugarás 5 pantallas.
@@ -110,7 +112,7 @@ src/
     art.js             mar con scroll, aviones, marcos, HUD y texturas
     game.js            motor del arcade: oleadas, disparos, vidas y sectores
 moodle/
-  local/lwpd/questions.php   endpoint de solo lectura para Moodle
+  local/lwpd/vrquestions.php   endpoint de solo lectura para Moodle
 ```
 
 ### Añadir o cambiar preguntas

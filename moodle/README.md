@@ -12,10 +12,10 @@ estándar. Por eso el juego usa un pequeño endpoint de solo lectura que:
 1. Copia la carpeta `local/lwpd` a la raíz de tu Moodle:
 
    ```
-   /var/www/moodle/local/lwpd/questions.php
+   /var/www/moodle/local/lwpd/vrquestions.php
    ```
 
-2. Abre `questions.php` y configura los cuestionarios permitidos:
+2. Abre `vrquestions.php` y configura los cuestionarios permitidos:
 
    ```php
    // cmid del cuestionario: mod/quiz/view.php?id=1234
@@ -42,7 +42,13 @@ estándar. Por eso el juego usa un pequeño endpoint de solo lectura que:
 3. Comprueba que responde:
 
    ```
-   https://moodle.lhusurbil.eus/local/lwpd/questions.php?quiz=1234
+   https://moodle.lhusurbil.eus/local/lwpd/vrquestions.php?quiz=1234
+   ```
+
+   Y sin cmid, si solo hay un cuestionario autorizado:
+
+   ```
+   https://moodle.lhusurbil.eus/local/lwpd/vrquestions.php?quiz=auto
    ```
 
    También acepta IDs concretos (si pertenecen a los cuestionarios permitidos):
@@ -56,7 +62,8 @@ estándar. Por eso el juego usa un pequeño endpoint de solo lectura que:
 En la pantalla inicial, pulsa **Moodle** y elige una de las dos formas:
 
 - **Cuestionario (cmid)**: pones el ID del cuestionario y se cargan todas sus
-  preguntas. Es la opción recomendada y la más cómoda en Pico 4.
+  preguntas. **Si solo autorizas un cuestionario en `LWPD_QUIZ_IDS`, puedes
+  dejar este campo vacío**: el servidor usará ese automáticamente.
 - **IDs de preguntas**: solo si necesitas una selección concreta. Deben
   pertenecer a los cuestionarios autorizados en `LWPD_QUIZ_IDS`.
 

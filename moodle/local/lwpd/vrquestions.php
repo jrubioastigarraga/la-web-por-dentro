@@ -3,8 +3,9 @@
  * Endpoint de solo lectura para "Escuadrón Web".
  *
  * Dos modos:
- *   GET /local/lwpd/questions.php?quiz=123
- *   GET /local/lwpd/questions.php?ids=101,102,103
+ *   GET /local/lwpd/vrquestions.php?quiz=123
+ *   GET /local/lwpd/vrquestions.php?quiz=auto
+ *   GET /local/lwpd/vrquestions.php?ids=101,102,103
  *
  * La clave es opcional; si se define, debe enviarse en la cabecera
  * X-LWPD-Key (o en ?key= para pruebas desde el navegador).
@@ -208,7 +209,7 @@ if ($allowedOrigin !== '' && $origin !== '' && $origin !== $allowedOrigin) {
 
 /* ------------------------------------------------------------ resolución */
 
-$quizParam = optional_param('quiz', 0, PARAM_INT);
+$quizParamRaw = optional_param('quiz', '', PARAM_TEXT);
 $requestedIds = lwpd_ids(optional_param('ids', '', PARAM_TEXT));
 
 $allowedQuestionIds = [];
@@ -224,6 +225,17 @@ foreach ($quizCms as $cmid) {
     $allowedQuestionIds = array_merge($allowedQuestionIds, $qids);
 }
 $allowedQuestionIds = array_values(array_unique(array_merge($allowedQuestionIds, $extraIds)));
+
+if ($quizParamRaw === 'auto') {
+    // Sin cmid en el juego: se usa el unico cuestionario permitido y visible.
+    $visibleQuizzes = array_keys($quizQuestionMap);
+    if (count($visibleQuizzes) !== 1) {
+        lwpd_fail('choose-quiz', 403);
+    }
+    $quizParam = (int)$visibleQuizzes[0];
+} else {
+    $quizParam = (int)$quizParamRaw;
+}
 
 if ($quizParam) {
     // Modo "ID de cuestionario": devuelve todas sus preguntas.

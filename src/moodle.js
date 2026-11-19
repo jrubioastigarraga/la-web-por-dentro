@@ -104,19 +104,21 @@ export function normalizeQuestion(raw) {
 }
 
 export async function fetchMoodleQuestions(config) {
-  const quiz = String(config.quiz || '').trim();
+  let quiz = String(config.quiz || '').trim();
   const ids = parseIds(config.ids);
-  if (!quiz && !ids.length) throw new Error('missing-ids');
 
   const base = String(config.base || DEFAULTS.base)
     .trim()
     .replace(/\/+$/, '');
-  const url = new URL(`${base}/local/lwpd/questions.php`);
+  const url = new URL(`${base}/local/lwpd/vrquestions.php`);
 
   if (quiz) {
     url.searchParams.set('quiz', quiz);
-  } else {
+  } else if (ids.length) {
     url.searchParams.set('ids', ids.join(','));
+  } else {
+    // Sin cmid: el servidor usa el unico cuestionario permitido.
+    url.searchParams.set('quiz', 'auto');
   }
 
   const headers = {};

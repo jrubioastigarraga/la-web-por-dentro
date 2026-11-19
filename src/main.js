@@ -16,7 +16,6 @@ import { applyStaticText, setLang, t, sectorTitle } from './i18n.js';
 import {
   fetchMoodleQuestions,
   loadMoodleConfig,
-  parseIds,
   saveMoodleConfig,
 } from './moodle.js';
 
@@ -475,11 +474,6 @@ async function runMoodle(play) {
     ids: idsInput?.value,
   });
 
-  if (!config.quiz && !parseIds(config.ids).length) {
-    setMoodleStatus(t('moodleNeedIds'), 'error');
-    return;
-  }
-
   setMoodleStatus(t('moodleLoading'));
   try {
     const questions = await fetchMoodleQuestions(config);
@@ -498,17 +492,6 @@ async function runMoodle(play) {
  */
 async function quickMoodle() {
   const config = loadMoodleConfig();
-  const hasTarget = Boolean(config.quiz) || parseIds(config.ids).length > 0;
-
-  if (!hasTarget) {
-    hud.set(
-      'MOODLE',
-      t('moodleNoConfig'),
-      t('moodleHint'),
-      '#ffb454'
-    );
-    return;
-  }
 
   hud.set('MOODLE', t('moodleLoading'), '', '#4de2c5');
 

@@ -66,7 +66,7 @@ const STRINGS = {
     moodleKey: 'Clave de acceso',
     moodleQuiz: 'Cuestionario (cmid)',
     moodleQuizHint:
-      'ID del cuestionario en Moodle (mod/quiz/view.php?id=...). Si lo pones, se cargan todas sus preguntas.',
+      'ID del cuestionario en Moodle (mod/quiz/view.php?id=...). Si lo dejas vacío y solo hay un cuestionario permitido, se usará ese.',
     moodleIds: 'IDs de preguntas',
     moodleIdsHint:
       'Solo si no usas el ID del cuestionario. Sepáralos por comas.',
@@ -150,7 +150,7 @@ const STRINGS = {
     moodleKey: 'Sarbide-gakoa',
     moodleQuiz: 'Galdetegia (cmid)',
     moodleQuizHint:
-      'Moodlen duen galdetegiaren IDa (mod/quiz/view.php?id=...). Hau betetzen baduzu, galdetegiaren galdera guztiak kargatuko dira.',
+      'Moodlen duen galdetegiaren IDa (mod/quiz/view.php?id=...). Hutsik uzten baduzu eta galdetegi bakarra badago baimenduta, hura erabiliko da.',
     moodleIds: 'Galderen IDak',
     moodleIdsHint:
       'Soilik galdetegiaren IDa erabiltzen ez baduzu. Banatu komaz.',
