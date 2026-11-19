@@ -62,11 +62,14 @@ const STRINGS = {
     /* moodle */
     moodle: 'Moodle',
     moodleTitle: 'Preguntas de Moodle',
+    moodleApi: 'API (proxy)',
+    moodleApiHint:
+      'Si usas la API de Python, pon aquí su URL. Tiene prioridad sobre el servidor.',
     moodleServer: 'Servidor',
     moodleKey: 'Clave de acceso',
-    moodleQuiz: 'Cuestionario (cmid)',
+    moodleQuiz: 'Cuestionario (cmid o nombre)',
     moodleQuizHint:
-      'ID del cuestionario en Moodle (mod/quiz/view.php?id=...). Si lo dejas vacío y solo hay un cuestionario permitido, se usará ese.',
+      'ID del cuestionario en Moodle (mod/quiz/view.php?id=...) o nombre del cuestionario importado (por ejemplo "http"). Si lo dejas vacío y solo hay uno, se usará ese.',
     moodleIds: 'IDs de preguntas',
     moodleIdsHint:
       'Solo si no usas el ID del cuestionario. Sepáralos por comas.',
@@ -146,11 +149,14 @@ const STRINGS = {
     /* moodle */
     moodle: 'Moodle',
     moodleTitle: 'Moodleko galderak',
+    moodleApi: 'APIa (proxy)',
+    moodleApiHint:
+      'Python APIa erabiltzen baduzu, jarri hemen bere URLa. Zerbitzariaren gainetik lehentasuna du.',
     moodleServer: 'Zerbitzaria',
     moodleKey: 'Sarbide-gakoa',
-    moodleQuiz: 'Galdetegia (cmid)',
+    moodleQuiz: 'Galdetegia (cmid edo izena)',
     moodleQuizHint:
-      'Moodlen duen galdetegiaren IDa (mod/quiz/view.php?id=...). Hutsik uzten baduzu eta galdetegi bakarra badago baimenduta, hura erabiliko da.',
+      'Moodlen duen galdetegiaren IDa (mod/quiz/view.php?id=...) edo inportatutako galdetegiaren izena (adibidez "http"). Hutsik uzten baduzu eta bakarra badago, hura erabiliko da.',
     moodleIds: 'Galderen IDak',
     moodleIdsHint:
       'Soilik galdetegiaren IDa erabiltzen ez baduzu. Banatu komaz.',
@@ -251,6 +257,8 @@ export function applyStaticText() {
     if (el) el.textContent = text;
   };
   set('moodle-title', t('moodleTitle'));
+  set('moodle-api-label', t('moodleApi'));
+  set('moodle-api-hint', t('moodleApiHint'));
   set('moodle-url-label', t('moodleServer'));
   set('moodle-key-label', t('moodleKey'));
   set('moodle-quiz-label', t('moodleQuiz'));

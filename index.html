@@ -36,6 +36,18 @@
     <div id="moodle-modal" class="modal" hidden>
       <form class="modal-card" id="moodle-form">
         <h2 id="moodle-title">Preguntas de Moodle</h2>
+        <label for="moodle-api" id="moodle-api-label">API (proxy)</label>
+        <input
+          id="moodle-api"
+          type="url"
+          inputmode="url"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="https://mi-api.onrender.com"
+        />
+        <p class="help" id="moodle-api-hint">
+          Si usas la API de Python, pon aquí su URL. Tiene prioridad sobre el servidor.
+        </p>
         <label for="moodle-url" id="moodle-url-label">Servidor</label>
         <input
           id="moodle-url"

@@ -5,6 +5,7 @@ const DEFAULTS = {
   key: '',
   ids: '',
   quiz: '',
+  api: '',
 };
 
 export function loadMoodleConfig() {
@@ -15,6 +16,7 @@ export function loadMoodleConfig() {
       key: String(raw.key || ''),
       ids: String(raw.ids || ''),
       quiz: String(raw.quiz || ''),
+      api: String(raw.api || ''),
     };
   } catch {
     return { ...DEFAULTS };
@@ -29,6 +31,7 @@ export function saveMoodleConfig(config) {
     key: String(config.key || '').trim(),
     ids: String(config.ids || '').trim(),
     quiz: String(config.quiz || '').trim(),
+    api: String(config.api || '').trim().replace(/\/+$/, ''),
   };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
@@ -106,11 +109,17 @@ export function normalizeQuestion(raw) {
 export async function fetchMoodleQuestions(config) {
   let quiz = String(config.quiz || '').trim();
   const ids = parseIds(config.ids);
+  const api = String(config.api || '').trim().replace(/\/+$/, '');
 
-  const base = String(config.base || DEFAULTS.base)
-    .trim()
-    .replace(/\/+$/, '');
-  const url = new URL(`${base}/local/lwpd/vrquestions.php`);
+  let url;
+  if (api) {
+    url = new URL(api.endsWith('/questions') ? api : `${api}/questions`);
+  } else {
+    const base = String(config.base || DEFAULTS.base)
+      .trim()
+      .replace(/\/+$/, '');
+    url = new URL(`${base}/local/lwpd/vrquestions.php`);
+  }
 
   if (quiz) {
     url.searchParams.set('quiz', quiz);
@@ -122,7 +131,10 @@ export async function fetchMoodleQuestions(config) {
   }
 
   const headers = {};
-  if (config.key) headers['X-LWPD-Key'] = config.key;
+  if (config.key) {
+    // En modo API es la clave del proxy; en modo directo, la del plugin.
+    headers[api ? 'X-Api-Key' : 'X-LWPD-Key'] = config.key;
+  }
 
   const response = await fetch(url.toString(), {
     cache: 'no-store',

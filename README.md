@@ -74,7 +74,34 @@ Cada pregunta se convierte en **una pantalla (`STAGE`) independiente**. Si el cu
 
 También puedes configurarlo por enlace, cómodo en Pico 4: `?quiz=1234&start=1` (y `#key=...` solo la primera vez).
 
-Moodle no ofrece un Web Service estándar para pedir una pregunta por ID, por eso se usa ese pequeño endpoint de solo lectura (con CORS y clave opcional). Solo se admiten preguntas de tipo **multichoice** y **truefalse**.
+Moodle no ofrece un Web Service estándar para pedir una pregunta por ID con su respuesta correcta, por eso se usa ese pequeño endpoint de solo lectura (con CORS y clave opcional). Solo se admiten preguntas de tipo **multichoice** y **truefalse**.
+
+### Sin instalar el plugin: exportar el cuestionario
+
+Si no puedes instalar nada en Moodle, exporta el cuestionario (**Banco de preguntas → Exportar → Moodle XML**) y conviértelo con la API:
+
+```bash
+cd api
+python import_moodle.py cuestionario.xml --name http
+MOODLE_URL=none uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+El juego usa la API con `quiz=http` (o vacío si solo hay uno). No hace falta token ni tocar el servidor de Moodle; solo repetir la exportación cuando cambien las preguntas.
+
+### API intermedia en Python (opcional)
+
+Si prefieres no exponer la clave de Moodle al navegador, hay una API en [`api/`](/jrubioastigarraga/la-web-por-dentro/tree/main/api):
+
+```
+Juego  ->  API Python (FastAPI)  ->  Moodle (plugin local_lwpd)
+```
+
+- La clave de Moodle vive solo en la API.
+- El juego solo necesita la URL de la API y el cmid.
+- Incluye CORS, caché y límite de peticiones.
+- Se despliega en Render, Railway, Fly.io o Docker.
+
+Consulta [`api/README.md`](/jrubioastigarraga/la-web-por-dentro/blob/main/api/README.md). En el juego, rellena el campo **API (proxy)** con la URL de la API.
 
 ## Modos
 
@@ -105,12 +132,14 @@ src/
   menu.js              pantalla de inicio y selección de sector
   hud.js               panel de instrucciones del menú
   i18n.js              textos ES/EU y ayudas de traducción
-  moodle.js            carga de preguntas por ID desde Moodle
+  moodle.js            carga de preguntas por ID/cmid desde Moodle o API
   util.js              tarjetas, etiquetas, audio y utilidades
   arcade/
     questions.js       bancos de preguntas de las cinco asignaturas
     art.js             mar con scroll, aviones, marcos, HUD y texturas
     game.js            motor del arcade: oleadas, disparos, vidas y sectores
+api/
+  main.py              API FastAPI (juego -> API -> Moodle)
 moodle/
   plugin/lwpd/              plugin local local_lwpd (código fuente)
   local_lwpd.zip            plugin listo para instalar en Moodle

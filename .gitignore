@@ -3,3 +3,8 @@ dist/
 .DS_Store
 *.local
 .vite/
+
+api/.env
+api/.venv/
+__pycache__/
+*.pyc

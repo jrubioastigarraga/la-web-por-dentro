@@ -416,6 +416,7 @@ document.getElementById('langs')?.addEventListener('click', (event) => {
 
 const modal = document.getElementById('moodle-modal');
 const moodleStatus = document.getElementById('moodle-status');
+const apiInput = document.getElementById('moodle-api');
 const urlInput = document.getElementById('moodle-url');
 const keyInput = document.getElementById('moodle-key');
 const quizInput = document.getElementById('moodle-quiz');
@@ -430,12 +431,13 @@ function setMoodleStatus(text, kind = '') {
 function openMoodle() {
   const config = loadMoodleConfig();
   if (urlInput) urlInput.value = config.base;
+  if (apiInput) apiInput.value = config.api;
   if (keyInput) keyInput.value = config.key;
   if (quizInput) quizInput.value = config.quiz;
   if (idsInput) idsInput.value = config.ids;
   setMoodleStatus('');
   if (modal) modal.hidden = false;
-  setTimeout(() => (quizInput?.value ? idsInput : quizInput)?.focus(), 60);
+  setTimeout(() => (apiInput?.value ? quizInput : apiInput)?.focus(), 60);
 }
 
 function closeMoodle() {
@@ -469,6 +471,7 @@ function startMoodleGame(questions) {
 async function runMoodle(play) {
   const config = saveMoodleConfig({
     base: urlInput?.value,
+    api: apiInput?.value,
     key: keyInput?.value,
     quiz: quizInput?.value,
     ids: idsInput?.value,
@@ -735,6 +738,11 @@ function applyUrlConfig() {
   const server = params.get('server') || params.get('moodle');
   if (server) {
     config.base = server;
+    changed = true;
+  }
+  const api = params.get('api');
+  if (api) {
+    config.api = api;
     changed = true;
   }
   const key = params.get('key') || hash.get('key');
