@@ -9,24 +9,29 @@ import {
   sfx,
 } from './util.js';
 import { HUD } from './hud.js';
-import { buildHub } from './hub.js';
-import { rooms } from './rooms/index.js';
+import { buildMenu } from './menu.js';
+import { buildArcade } from './arcade/game.js';
+import { SECTORS } from './arcade/questions.js';
 
 /* ------------------------------------------------------------ persistencia */
 
-const STORAGE_KEY = 'lwpd.progress.v1';
+const STORAGE_KEY = 'lwpd.arcade.v1';
 
-function loadProgress() {
+function loadSave() {
   try {
-    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    if (!Array.isArray(raw)) return [];
-    return raw.filter((id) => rooms.some((room) => room.id === id));
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    return {
+      best: Number(raw.best) || 0,
+      sectors: Math.min(SECTORS.length, Number(raw.sectors) || 0),
+    };
   } catch {
-    return [];
+    return { best: 0, sectors: 0 };
   }
 }
 
-const state = { progress: loadProgress(), roomId: null };
+const save = loadSave();
+const state = { screen: 'menu' };
+let game = null;
 
 /* ------------------------------------------------------------------ tres */
 
@@ -60,7 +65,7 @@ const rig = new THREE.Group();
 scene.add(rig);
 rig.add(camera);
 
-const look = { yaw: 0, pitch: -0.12 };
+const look = { yaw: 0, pitch: -0.14 };
 
 function applyLook() {
   camera.rotation.set(look.pitch, look.yaw, 0, 'YXZ');
@@ -88,34 +93,10 @@ scene.add(rimPurple);
 const env = new THREE.Group();
 scene.add(env);
 
-const base = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.98, 1.04, 0.07, 72),
-  new THREE.MeshStandardMaterial({
-    color: 0x0b1424,
-    roughness: 0.5,
-    metalness: 0.35,
-  })
-);
-base.position.set(0, 0.9, -1.2);
-env.add(base);
-
-const baseRim = new THREE.Mesh(
-  new THREE.TorusGeometry(0.99, 0.007, 8, 120),
-  new THREE.MeshBasicMaterial({
-    color: COLORS.accent,
-    transparent: true,
-    opacity: 0.5,
-    toneMapped: false,
-  })
-);
-baseRim.rotation.x = Math.PI / 2;
-baseRim.position.set(0, 0.94, -1.2);
-env.add(baseRim);
-
 const grid = new THREE.GridHelper(26, 52, 0x1c2d47, 0x101a2b);
-grid.position.y = 0;
+grid.position.y = 0.05;
 grid.material.transparent = true;
-grid.material.opacity = 0.5;
+grid.material.opacity = 0.35;
 env.add(grid);
 
 const starGeometry = new THREE.BufferGeometry();
@@ -153,11 +134,11 @@ scene.add(stage);
 const hud = new HUD();
 camera.add(hud.group);
 
-const backButton = makeButton('← Volver al hub', { w: 0.29, h: 0.085 });
-backButton.position.set(-0.86, 1.56, -1.32);
-backButton.rotation.y = 0.58;
+const backButton = makeButton('← Menú', { w: 0.2, h: 0.07 });
+backButton.position.set(-0.86, 0.84, -1.25);
+backButton.rotation.y = 0.5;
 backButton.visible = false;
-backButton.userData.onSelect = () => goHub();
+backButton.userData.onSelect = () => showMenu();
 scene.add(backButton);
 
 /* ------------------------------------------------------- interacción */
@@ -208,6 +189,10 @@ function updateHover() {
     document.body.style.cursor = '';
     return;
   }
+  if (game) {
+    document.body.style.cursor = 'crosshair';
+    return;
+  }
   camera.updateMatrixWorld();
   raycaster.setFromCamera(pointer, camera);
   const hits = raycaster.intersectObjects([stage, backButton], true);
@@ -246,6 +231,8 @@ function onXRSelect(event) {
   controller.getWorldPosition(origin);
   controller.getWorldQuaternion(quaternion);
   const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(quaternion);
+
+  if (game && game.handleXR(origin, direction)) return;
 
   const target = pick(origin, direction);
   if (target) {
@@ -288,47 +275,71 @@ for (let i = 0; i < 2; i++) {
 const vrButton = VRButton.createButton(renderer);
 document.body.appendChild(vrButton);
 
-/* --------------------------------------------------------- ciclo de salas */
+/* --------------------------------------------------------------- pantallas */
 
 const timers = new Set();
 const tickers = new Set();
 
-function createApi(room) {
-  return {
-    room,
-    isSolved: (id) => state.progress.includes(id),
-    progressCount: () => state.progress.length,
-    openRoom,
-    goHub,
-    click: sfx.click,
-    say: (body, foot = '') => hud.set(room.title, body, foot, room.tone),
-    ok: (body, foot = '') => {
-      sfx.ok();
-      hud.set(room.title, body, foot, '#4ade80');
-    },
-    err: (body, foot = '') => {
-      sfx.err();
-      hud.set(room.title, body, foot, '#ff5d73');
-    },
-    complete: (body) => {
-      markSolved(room.id);
-      sfx.win();
-      hud.set(
-        `✔ ${room.title}`,
-        body,
-        `Progreso ${state.progress.length}/${rooms.length} · vuelve al hub`,
-        '#4ade80'
-      );
-    },
-    after: (ms, fn) => {
-      const id = setTimeout(() => {
-        timers.delete(id);
-        fn();
-      }, ms);
-      timers.add(id);
-    },
-    tick: (fn) => tickers.add(fn),
-  };
+function after(ms, fn) {
+  const id = setTimeout(() => {
+    timers.delete(id);
+    fn();
+  }, ms);
+  timers.add(id);
+}
+
+function tick(fn) {
+  tickers.add(fn);
+}
+
+function setHud(title, body, foot = '', tone = '#4de2c5') {
+  hud.set(title, body, foot, tone);
+}
+
+function submitScore(score, sectors) {
+  let changed = false;
+  if (score > save.best) {
+    save.best = score;
+    changed = true;
+  }
+  if (sectors > save.sectors) {
+    save.sectors = Math.min(SECTORS.length, sectors);
+    changed = true;
+  }
+  if (!changed) return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(save));
+  } catch {
+    /* almacenamiento no disponible */
+  }
+  renderDots();
+}
+
+const api = {
+  setHud,
+  ok: (body, foot = '') => {
+    sfx.ok();
+    setHud(currentTitle(), body, foot, '#4ade80');
+  },
+  err: (body, foot = '') => {
+    sfx.err();
+    setHud(currentTitle(), body, foot, '#ff5d73');
+  },
+  after,
+  tick,
+  startGame,
+  showMenu,
+  submitScore,
+  get best() {
+    return save.best;
+  },
+  get bestSectors() {
+    return save.sectors;
+  },
+};
+
+function currentTitle() {
+  return game ? game.header() : 'ESCUADRÓN WEB';
 }
 
 function clearStage() {
@@ -339,52 +350,30 @@ function clearStage() {
   stage.clear();
 }
 
-function markSolved(id) {
-  if (state.progress.includes(id)) return;
-  state.progress.push(id);
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.progress));
-  } catch {
-    /* almacenamiento no disponible */
-  }
-  renderDots();
-}
-
-function openRoom(id) {
-  const room = rooms.find((item) => item.id === id);
-  if (!room) return;
-
+function startGame(opts = {}) {
   clearStage();
-  state.roomId = id;
-  document.body.classList.add('in-room');
-  backButton.visible = true;
+  state.screen = 'game';
+  document.body.classList.add('in-game');
+  backButton.visible = renderer.xr.isPresenting;
   const backBtn = document.getElementById('btn-back');
   if (backBtn) backBtn.hidden = false;
 
-  const api = createApi(room);
-  try {
-    stage.add(room.build(api));
-  } catch (error) {
-    console.error(error);
-    hud.set(
-      room.title,
-      'Esta sala no ha podido cargarse. Vuelve al hub e inténtalo de nuevo.',
-      String(error),
-      '#ff5d73'
-    );
-  }
+  game = buildArcade(api, opts);
+  stage.add(game.group);
+  document.body.style.cursor = 'crosshair';
 }
 
-function goHub() {
+function showMenu() {
   clearStage();
-  state.roomId = null;
-  document.body.classList.remove('in-room');
+  game = null;
+  state.screen = 'menu';
+  document.body.classList.remove('in-game');
   backButton.visible = false;
   const backBtn = document.getElementById('btn-back');
   if (backBtn) backBtn.hidden = true;
 
-  const api = createApi({ id: 'hub', title: 'La Web por Dentro', tone: '#4de2c5' });
-  stage.add(buildHub(api));
+  stage.add(buildMenu(api));
+  document.body.style.cursor = '';
 }
 
 /* ------------------------------------------------------------------ html */
@@ -394,34 +383,63 @@ const dotsEl = document.getElementById('dots');
 function renderDots() {
   if (!dotsEl) return;
   dotsEl.innerHTML = '';
-  for (const room of rooms) {
+  for (let i = 0; i < SECTORS.length; i++) {
     const dot = document.createElement('span');
-    dot.className = state.progress.includes(room.id) ? 'dot on' : 'dot';
-    dot.title = room.title;
+    dot.className = i < save.sectors ? 'dot on' : 'dot';
+    dot.title = SECTORS[i].title;
     dotsEl.appendChild(dot);
   }
 }
 
 document.getElementById('btn-back')?.addEventListener('click', () => {
   initAudio();
-  goHub();
+  showMenu();
 });
 
 document.getElementById('btn-reset')?.addEventListener('click', () => {
-  const ok = window.confirm('¿Reiniciar el progreso de las 5 salas?');
+  const ok = window.confirm('¿Borrar el récord y los sectores despejados?');
   if (!ok) return;
-  state.progress = [];
+  save.best = 0;
+  save.sectors = 0;
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch {
     /* sin almacenamiento */
   }
   renderDots();
-  goHub();
+  showMenu();
 });
 
 window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && state.roomId) goHub();
+  if (event.key === 'Escape') {
+    if (state.screen !== 'menu') showMenu();
+    return;
+  }
+
+  if (state.screen === 'menu' && event.key === 'Enter') {
+    initAudio();
+    startGame({ sector: null });
+    return;
+  }
+
+  if (!game) return;
+
+  if (event.code === 'Space') {
+    event.preventDefault();
+    initAudio();
+    game.fire();
+    return;
+  }
+
+  if (event.key === 'ArrowLeft' || event.key === 'a' || event.key === 'A') {
+    game.nudge(-1);
+  } else if (
+    event.key === 'ArrowRight' ||
+    event.key === 'd' ||
+    event.key === 'D'
+  ) {
+    game.nudge(1);
+  }
 });
 
 window.addEventListener('resize', () => {
@@ -439,6 +457,14 @@ let dragging = false;
 dom.addEventListener('pointerdown', (event) => {
   if (renderer.xr.isPresenting) return;
   updatePointer(event);
+  initAudio();
+
+  if (game && game.isPlaying()) {
+    game.pointerMove(pointer.x);
+    game.setFiring(true);
+    return;
+  }
+
   pointerDown = { x: event.clientX, y: event.clientY };
   dragging = false;
   try {
@@ -451,16 +477,19 @@ dom.addEventListener('pointerdown', (event) => {
 window.addEventListener('pointermove', (event) => {
   updatePointer(event);
 
+  if (game) {
+    game.pointerMove(pointer.x);
+    if (game.isPlaying()) {
+      document.body.style.cursor = 'crosshair';
+      return;
+    }
+  }
+
   if (pointerDown && !renderer.xr.isPresenting) {
     const dx = event.clientX - pointerDown.x;
     const dy = event.clientY - pointerDown.y;
     if (!dragging && Math.abs(dx) + Math.abs(dy) > 4) dragging = true;
-    if (dragging) {
-      look.yaw = THREE.MathUtils.clamp(look.yaw - dx * 0.0028, -0.8, 0.8);
-      look.pitch = THREE.MathUtils.clamp(look.pitch - dy * 0.0028, -0.65, 0.45);
-      pointerDown = { x: event.clientX, y: event.clientY };
-      applyLook();
-    }
+    pointerDown = { x: event.clientX, y: event.clientY };
   }
 
   updateHover();
@@ -472,15 +501,22 @@ window.addEventListener('pointerup', (event) => {
     dragging = false;
     return;
   }
+
+  if (game) game.setFiring(false);
+
   const wasDragging = dragging;
   pointerDown = null;
   dragging = false;
+
+  if (game && game.isPlaying()) return;
   if (wasDragging) return;
+
   updatePointer(event);
   selectFromScreen();
 });
 
 window.addEventListener('pointercancel', () => {
+  if (game) game.setFiring(false);
   pointerDown = null;
   dragging = false;
 });
@@ -490,11 +526,13 @@ window.addEventListener('pointercancel', () => {
 renderer.xr.addEventListener('sessionstart', () => {
   document.body.classList.add('xr');
   for (const controller of controllers) controller.visible = true;
+  backButton.visible = state.screen === 'game';
 });
 
 renderer.xr.addEventListener('sessionend', () => {
   document.body.classList.remove('xr');
   for (const controller of controllers) controller.visible = false;
+  backButton.visible = false;
   camera.position.set(0, 1.6, 0);
   applyLook();
 });
@@ -513,7 +551,6 @@ renderer.setAnimationLoop(() => {
   for (const ticker of tickers) ticker(dt, t);
 
   stars.rotation.y += dt * 0.004;
-  baseRim.material.opacity = 0.22 + Math.sin(t * 1.4) * 0.05;
 
   renderer.render(scene, camera);
 
@@ -525,5 +562,17 @@ renderer.setAnimationLoop(() => {
 
 /* ------------------------------------------------------------------ init */
 
+// Pequeño gancho de depuración (útil para pruebas automáticas y para el aula).
+window.__arcade = {
+  startGame,
+  showMenu,
+  get game() {
+    return game;
+  },
+  get save() {
+    return save;
+  },
+};
+
 renderDots();
-goHub();
+showMenu();

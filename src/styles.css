@@ -40,6 +40,11 @@ body {
   cursor: grabbing;
 }
 
+body.in-game #app canvas,
+body.in-game #app canvas:active {
+  cursor: crosshair;
+}
+
 #topbar {
   position: fixed;
   top: 0;

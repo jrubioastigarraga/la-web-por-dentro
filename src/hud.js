@@ -10,14 +10,14 @@ export class HUD {
   constructor() {
     this.canvas = document.createElement('canvas');
     this.canvas.width = 1200;
-    this.canvas.height = 360;
+    this.canvas.height = 250;
     this.ctx = this.canvas.getContext('2d');
 
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.colorSpace = THREE.SRGBColorSpace;
 
     this.mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.84, 0.252),
+      new THREE.PlaneGeometry(0.84, 0.175),
       new THREE.MeshBasicMaterial({
         map: this.texture,
         transparent: true,
@@ -31,7 +31,7 @@ export class HUD {
 
     this.group = new THREE.Group();
     this.group.add(this.mesh);
-    this.group.position.set(0, 0.265, -0.99);
+    this.group.position.set(0, 0.35, -0.99);
 
     this.title = '';
     this.body = '';
@@ -72,21 +72,21 @@ export class HUD {
     ctx.textBaseline = 'middle';
 
     ctx.fillStyle = this.tone;
-    ctx.font = `700 30px ${FONT}`;
-    ctx.fillText(this.title.toUpperCase(), 58, 50);
+    ctx.font = `700 26px ${FONT}`;
+    ctx.fillText(this.title.toUpperCase(), 54, 34);
 
     ctx.fillStyle = '#eaf2f7';
-    ctx.font = `500 38px ${FONT}`;
-    const lines = this.wrap(this.body, W - 116);
-    lines.slice(0, 4).forEach((line, i) => {
-      const text = i === 3 && lines.length > 4 ? `${line.slice(0, -1)}…` : line;
-      ctx.fillText(text, 58, 118 + i * 49);
+    ctx.font = `500 33px ${FONT}`;
+    const lines = this.wrap(this.body, W - 108);
+    lines.slice(0, 3).forEach((line, i) => {
+      const text = i === 2 && lines.length > 3 ? `${line.slice(0, -1)}…` : line;
+      ctx.fillText(text, 54, 80 + i * 42);
     });
 
     if (this.foot) {
       ctx.fillStyle = '#7f93ab';
-      ctx.font = `600 27px ${FONT}`;
-      ctx.fillText(this.foot, 58, H - 30);
+      ctx.font = `600 23px ${FONT}`;
+      ctx.fillText(this.foot, 54, H - 22);
     }
 
     this.texture.needsUpdate = true;

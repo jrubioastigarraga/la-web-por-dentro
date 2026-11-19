@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Juego educativo en 3D y realidad virtual para el ciclo DAW: HTTP, CSS, Git, bases de datos y accesibilidad.",
+  "description": "Arcade de aviones en 3D y VR para el ciclo DAW: derriba la respuesta correcta de HTTP, CSS, Git, bases de datos y accesibilidad.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
