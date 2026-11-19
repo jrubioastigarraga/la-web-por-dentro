@@ -905,14 +905,20 @@ export function makeBezel() {
   return mesh;
 }
 
-/** Barra de estado dentro de la pantalla (score, vidas, progreso). */
-export class StatusBar {
-  constructor(width = 1.32, height = 0.105) {
+
+/**
+ * Panel del juego dentro de la pantalla de la recreativa.
+ * Arriba muestra la pregunta (o el resultado) y abajo la puntuación,
+ * las vidas y el progreso, como una placa de arcade.
+ */
+export class GamePanel {
+  constructor(width = 1.28, height = 0.1875) {
     this.canvas = document.createElement('canvas');
     this.canvas.width = 1024;
-    this.canvas.height = 70;
+    this.canvas.height = 150;
     this.ctx = this.canvas.getContext('2d');
     this.texture = toTexture(this.canvas);
+
     this.mesh = new THREE.Mesh(
       new THREE.PlaneGeometry(width, height),
       new THREE.MeshBasicMaterial({
@@ -922,100 +928,170 @@ export class StatusBar {
         toneMapped: false,
       })
     );
-    this.state = null;
+
+    this.stats = {
+      stage: '',
+      score: 0,
+      lives: 3,
+      question: 0,
+      total: 6,
+      tone: '#4de2c5',
+    };
+    this.message = { text: '', kind: 'question', tone: null };
+    this.key = '';
+    this.draw();
   }
 
-  update(state) {
-    const key = JSON.stringify(state);
-    if (key === this.state) return;
-    this.state = key;
-    this.draw(state);
+  setStats(stats) {
+    this.stats = { ...this.stats, ...stats };
+    this.render();
   }
 
-  draw({ stage, score, lives, question, total, tone }) {
+  setMessage(text, kind = 'question', tone = null) {
+    this.message = { text, kind, tone };
+    this.render();
+  }
+
+  render() {
+    const key = JSON.stringify([this.stats, this.message]);
+    if (key === this.key) return;
+    this.key = key;
+    this.draw();
+  }
+
+  wrap(text, maxWidth, maxLines) {
+    const { ctx } = this;
+    const out = [];
+    for (const paragraph of String(text || '').split('\n')) {
+      const words = paragraph.split(/\s+/).filter(Boolean);
+      if (!words.length) {
+        out.push('');
+        continue;
+      }
+      let line = words[0];
+      for (let i = 1; i < words.length; i++) {
+        const probe = `${line} ${words[i]}`;
+        if (ctx.measureText(probe).width > maxWidth) {
+          out.push(line);
+          line = words[i];
+        } else {
+          line = probe;
+        }
+      }
+      out.push(line);
+    }
+    if (out.length > maxLines) {
+      const cut = out.slice(0, maxLines);
+      cut[maxLines - 1] = `${cut[maxLines - 1].slice(0, -1)}…`;
+      return cut;
+    }
+    return out;
+  }
+
+  draw() {
     const { ctx } = this;
     const W = 1024;
-    const H = 70;
+    const H = 150;
+    const { stage, score, lives, question, total, tone } = this.stats;
     const accent = tone || '#4de2c5';
+    const messageTone = this.message.tone || accent;
+
     ctx.clearRect(0, 0, W, H);
 
     const bg = ctx.createLinearGradient(0, 0, 0, H);
-    bg.addColorStop(0, 'rgba(3,8,15,0.94)');
+    bg.addColorStop(0, 'rgba(3,8,15,0.96)');
+    bg.addColorStop(0.8, 'rgba(3,8,15,0.9)');
     bg.addColorStop(1, 'rgba(3,8,15,0.72)');
     ctx.fillStyle = bg;
-    roundRect(ctx, 0, 0, W, H, 8);
+    roundRect(ctx, 0, 0, W, H, 10);
     ctx.fill();
 
     ctx.strokeStyle = accent;
-    ctx.globalAlpha = 0.55;
-    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.7;
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(10, H - 2);
-    ctx.lineTo(W - 10, H - 2);
+    ctx.moveTo(12, H - 2);
+    ctx.lineTo(W - 12, H - 2);
     ctx.stroke();
     ctx.globalAlpha = 1;
 
-    // 1UP + puntos
+    // etiqueta del mensaje
+    const tags = { question: 'PREGUNTA', ok: 'CORRECTO', err: 'FALLO' };
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#ffb454';
-    ctx.font = `800 12px ${FONT}`;
-    ctx.fillText('1UP', 18, 13);
+    ctx.fillStyle = messageTone;
+    ctx.font = `800 13px ${FONT}`;
+    ctx.fillText(tags[this.message.kind] || 'PREGUNTA', 18, 17);
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `800 27px ui-monospace, "Consolas", monospace`;
-    ctx.shadowColor = 'rgba(255,180,84,0.6)';
-    ctx.shadowBlur = 9;
-    ctx.fillText(String(score).padStart(6, '0'), 16, 42);
-    ctx.shadowBlur = 0;
+    // pregunta o resultado
+    ctx.fillStyle = '#f2f8fd';
+    ctx.font = `700 25px ${FONT}`;
+    const lines = this.wrap(this.message.text, W - 36, 3);
+    lines.forEach((line, i) => {
+      ctx.fillText(line, 18, 42 + i * 25);
+    });
 
     // separador
     ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(236, 12);
-    ctx.lineTo(236, H - 12);
+    ctx.moveTo(14, 101);
+    ctx.lineTo(W - 14, 101);
     ctx.stroke();
+
+    // 1UP + puntos
+    ctx.fillStyle = '#ffb454';
+    ctx.font = `800 11px ${FONT}`;
+    ctx.fillText('1UP', 18, 112);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `800 24px ui-monospace, "Consolas", monospace`;
+    ctx.shadowColor = 'rgba(255,180,84,0.55)';
+    ctx.shadowBlur = 8;
+    ctx.fillText(String(score).padStart(6, '0'), 16, 134);
+    ctx.shadowBlur = 0;
 
     // sector
     ctx.fillStyle = '#6f8199';
-    ctx.font = `700 11px ${FONT}`;
-    ctx.fillText('SECTOR', 258, 13);
+    ctx.font = `700 10px ${FONT}`;
+    ctx.fillText('SECTOR', 230, 112);
     ctx.fillStyle = accent;
-    ctx.font = `800 20px ${FONT}`;
-    ctx.fillText(String(stage).toUpperCase(), 258, 42);
+    ctx.font = `800 15px ${FONT}`;
+    ctx.fillText(String(stage).toUpperCase(), 230, 134);
 
     // vidas
     ctx.fillStyle = '#6f8199';
-    ctx.font = `700 11px ${FONT}`;
+    ctx.font = `700 10px ${FONT}`;
     ctx.textAlign = 'center';
-    ctx.fillText('VIDAS', 742, 13);
+    ctx.fillText('VIDAS', 676, 112);
     for (let i = 0; i < 3; i++) {
-      this.drawPlaneIcon(ctx, 714 + i * 28, 43, i < lives, accent);
+      this.drawPlaneIcon(ctx, 648 + i * 28, 134, i < lives, accent, 0.8);
     }
 
     // progreso de preguntas
     ctx.textAlign = 'left';
     ctx.fillStyle = '#6f8199';
-    ctx.font = `700 11px ${FONT}`;
-    ctx.fillText('PREGUNTAS', 836, 13);
+    ctx.font = `700 10px ${FONT}`;
+    ctx.fillText('PREGUNTAS', 806, 112);
     for (let i = 0; i < total; i++) {
-      const x = 836 + i * 27;
+      const x = 806 + i * 27;
       ctx.beginPath();
-      ctx.roundRect(x, 31, 20, 16, 3);
+      ctx.roundRect(x, 124, 20, 15, 3);
       ctx.fillStyle = i < question ? accent : 'rgba(255,255,255,0.16)';
       ctx.fill();
       if (i < question) {
         ctx.fillStyle = 'rgba(0,0,0,0.28)';
-        ctx.fillRect(x + 3, 34, 6, 10);
+        ctx.fillRect(x + 3, 127, 6, 9);
       }
     }
 
     this.texture.needsUpdate = true;
   }
 
-  drawPlaneIcon(ctx, x, y, on, tone) {
+  drawPlaneIcon(ctx, x, y, on, tone, scale = 1) {
     ctx.save();
     ctx.translate(x, y);
+    ctx.scale(scale, scale);
     ctx.globalAlpha = on ? 1 : 0.16;
     ctx.fillStyle = on ? tone || '#4de2c5' : '#8aa0b8';
     ctx.beginPath();

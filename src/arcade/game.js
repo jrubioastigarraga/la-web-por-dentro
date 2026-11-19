@@ -10,7 +10,7 @@ import {
 import { SECTORS, QUESTIONS_PER_SECTOR } from './questions.js';
 import {
   ScrollingWorld,
-  StatusBar,
+  GamePanel,
   makeBezel,
   makeDangerTexture,
   makePlane,
@@ -23,7 +23,7 @@ import {
 const LANES = [-0.4, 0, 0.4];
 const ENEMY_KINDS = ['red', 'amber', 'purple'];
 
-const SPAWN_Y = 1.49;
+const SPAWN_Y = 1.38;
 const LINE_Y = 1.13;
 const SHIP_Y = 1.005;
 const SHIP_Z = -1.44;
@@ -176,9 +176,9 @@ export class Arcade {
     this.group.add(this.sea.group);
     this.group.add(makeBezel());
 
-    /* barra de estado arcade */
-    this.status = new StatusBar(1.28, 0.0875);
-    this.status.mesh.position.set(0, 1.637, -1.62);
+    /* panel de juego dentro de la pantalla */
+    this.status = new GamePanel(1.235, 0.181);
+    this.status.mesh.position.set(0, 1.58, -1.68);
     this.group.add(this.status.mesh);
 
     /* línea de peligro */
@@ -278,20 +278,13 @@ export class Arcade {
     return this.state === 'playing';
   }
 
-  statusLine() {
-    return `Vidas ${this.lives}  ·  ${this.score} pts  ·  pregunta ${Math.min(
-      this.qIndex + 1,
-      this.queue.length
-    )}/${this.queue.length}`;
-  }
-
   header() {
     if (this.isPractice) return `PRÁCTICA · ${this.sector.title.toUpperCase()}`;
     return `SECTOR ${this.sectorPos + 1}/${this.order.length} · ${this.sector.title.toUpperCase()}`;
   }
 
   refreshStatus() {
-    this.status.update({
+    this.status.setStats({
       stage: this.isPractice
         ? `PRÁCTICA ${this.sector.title}`
         : `STAGE ${this.sectorPos + 1} · ${this.sector.title}`,
@@ -301,6 +294,14 @@ export class Arcade {
       total: this.queue.length,
       tone: this.sector.tone,
     });
+  }
+
+  ask(text) {
+    this.status.setMessage(text, 'question', this.sector.tone);
+  }
+
+  showResultMessage(kind, text) {
+    this.status.setMessage(text, kind, kind === 'ok' ? '#4ade80' : '#ff5d73');
   }
 
   /* --------------------------------------------------------------- flujo */
@@ -321,13 +322,7 @@ export class Arcade {
     }
     this.bullets = [];
     this.refreshStatus();
-
-    this.api.setHud(
-      this.header(),
-      sector.brief,
-      `${this.statusLine()}  ·  sector ${this.sectorPos + 1} de ${this.order.length}`,
-      sector.tone
-    );
+    this.ask(sector.brief);
 
     this.banner(
       this.isPractice ? 'PRÁCTICA' : `STAGE ${this.sectorPos + 1}`,
@@ -351,12 +346,7 @@ export class Arcade {
     this.state = 'playing';
     this.clearTargets();
     this.refreshStatus();
-    this.api.setHud(
-      this.header(),
-      this.current.text,
-      this.statusLine(),
-      this.sector.tone
-    );
+    this.ask(this.current.text);
     this.spawnWave();
   }
 
@@ -391,7 +381,7 @@ export class Arcade {
         label,
         x: LANES[lane],
         y: SPAWN_Y + 0.05,
-        speed: 0.042 + this.sectorPos * 0.007,
+        speed: 0.027 + this.sectorPos * 0.0045,
         correct: isCorrect,
         alive: true,
         phase: Math.random() * Math.PI * 2,
@@ -536,9 +526,9 @@ export class Arcade {
         this.popText(`COMBO x${this.combo}`, target.x, target.y - 0.05, '#ffd479', 0.02);
       }
 
-      this.api.ok(
-        `¡Derribado! ${this.current.why}  +${gain} pts`,
-        this.statusLine()
+      this.showResultMessage(
+        'ok',
+        `¡Derribado! ${this.current.why}  +${gain} pts`
       );
       this.refreshStatus();
 
@@ -566,7 +556,10 @@ export class Arcade {
     sfx.err();
     sfx.boom();
 
-    this.api.err(`${title} ${detail}  ${this.current.why}`, this.statusLine());
+    this.showResultMessage(
+      'err',
+      `${title} ${detail} ${this.current.why}`
+    );
 
     this.clearTargets(0.35);
 
@@ -602,9 +595,9 @@ export class Arcade {
       '#4ade80',
       1.6
     );
-    this.api.ok(
-      `Sector ${this.sectorPos + 1} despejado. +250 pts${extra ? ' y una vida extra' : ''}.`,
-      this.statusLine()
+    this.showResultMessage(
+      'ok',
+      `Sector ${this.sectorPos + 1} despejado. +250 pts${extra ? ' y una vida extra' : ''}.`
     );
     sfx.win();
 
@@ -621,11 +614,9 @@ export class Arcade {
     this.clearTargets();
     this.fx.clear();
     this.api.submitScore(this.score, this.sectorsDone);
-    this.api.setHud(
-      'FIN DE LA PARTIDA',
-      `El escuadrón ha caído con ${this.score} puntos. La respuesta correcta siempre estaba a la vista: vuelve a intentarlo.`,
-      `Récord personal: ${this.api.best} pts`,
-      '#ff5d73'
+    this.showResultMessage(
+      'err',
+      `El escuadrón ha caído con ${this.score} puntos. Vuelve a intentarlo.`
     );
     this.showResult(false);
   }
@@ -636,13 +627,11 @@ export class Arcade {
     this.clearTargets();
     this.fx.clear();
     this.api.submitScore(this.score, this.sectorsDone);
-    this.api.setHud(
-      this.isPractice ? 'PRÁCTICA COMPLETADA' : 'MISIÓN CUMPLIDA',
+    this.showResultMessage(
+      'ok',
       this.isPractice
-        ? `Has despejado la práctica de ${this.sector.title} con ${this.score} puntos y ${this.lives} vida(s) de reserva.`
-        : `Los cinco sectores están despejados. ${this.score} puntos y ${this.lives} vida(s) de reserva.`,
-      `Récord personal: ${this.api.best} pts`,
-      '#4ade80'
+        ? `Práctica de ${this.sector.title} completada con ${this.score} puntos.`
+        : `Los cinco sectores están despejados con ${this.score} puntos.`
     );
     this.showResult(true);
   }

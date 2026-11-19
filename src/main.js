@@ -358,6 +358,7 @@ function startGame(opts = {}) {
   const backBtn = document.getElementById('btn-back');
   if (backBtn) backBtn.hidden = false;
 
+  hud.group.visible = false;
   game = buildArcade(api, opts);
   stage.add(game.group);
   document.body.style.cursor = 'crosshair';
@@ -372,6 +373,7 @@ function showMenu() {
   const backBtn = document.getElementById('btn-back');
   if (backBtn) backBtn.hidden = true;
 
+  hud.group.visible = true;
   stage.add(buildMenu(api));
   document.body.style.cursor = '';
 }
