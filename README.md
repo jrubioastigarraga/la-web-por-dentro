@@ -59,26 +59,47 @@ El botón **ES / EU** de la barra superior cambia toda la interfaz: menú, panel
 
 ## Preguntas desde Moodle
 
-En la pantalla inicial, el botón **Moodle** permite cargar preguntas de un cuestionario concreto antes de jugar:
+La instalación desplegada es:
 
-1. Instala el **plugin local** `local_lwpd` desde [`moodle/local_lwpd.zip`](/jrubioastigarraga/la-web-por-dentro/raw/main/moodle/local_lwpd.zip) y configura allí los cuestionarios permitidos (ver [`moodle/README.md`](/jrubioastigarraga/la-web-por-dentro/blob/main/moodle/README.md)).
-2. En el juego, pulsa **Moodle** y escribe:
-   - el servidor (`https://moodle.lhusurbil.eus`),
-   - el **ID del cuestionario** (`cmid`) o, si lo prefieres, los IDs de preguntas,
-   - la clave solo si la has configurado.
+```
+Juego (HTTP)  ->  API Python  ->  Moodle (format_quizdump)
+```
 
-   **Si solo permites un cuestionario en el servidor, puedes dejar el cmid vacío**: el juego usa ese automáticamente.
-3. **Cargar y jugar**: el juego pide las preguntas de ese cuestionario, las reparte y empieza.
+- Juego: **http://172.16.35.2/la-web-por-dentro/**
+- API: **http://172.16.35.2/escuadron-api**
+- Plugin: `format_quizdump` (ZIP parcheado en [`moodle/format_quizdump.zip`](/jrubioastigarraga/la-web-por-dentro/raw/main/moodle/format_quizdump.zip))
 
-Cada pregunta se convierte en **una pantalla (`STAGE`) independiente**. Si el cuestionario tiene 5 preguntas, jugarás 5 pantallas.
+En la pantalla inicial, pulsa **Moodle** y rellena:
 
-También puedes configurarlo por enlace, cómodo en Pico 4: `?quiz=1234&start=1` (y `#key=...` solo la primera vez).
+- **API (proxy)**: `http://172.16.35.2/escuadron-api`
+- **Cuestionario**: `quiz:39` para un cuestionario o `course:51` para todos los quizzes de un curso.
+- **Clave de acceso**: solo si configuras `API_KEY` en la API.
 
-Moodle no ofrece un Web Service estándar para pedir una pregunta por ID con su respuesta correcta, por eso se usa ese pequeño endpoint de solo lectura (con CORS y clave opcional). Solo se admiten preguntas de tipo **multichoice** y **truefalse**.
+También por enlace, cómodo en Pico 4:
 
-### Sin instalar el plugin: exportar el cuestionario
+```
+http://172.16.35.2/la-web-por-dentro/?api=http://172.16.35.2/escuadron-api&quiz=quiz:39&start=1
+```
 
-Si no puedes instalar nada en Moodle, exporta el cuestionario (**Banco de preguntas → Exportar → Moodle XML**) y conviértelo con la API:
+Cada pregunta se convierte en **una pantalla (`STAGE`) independiente**.
+
+Para saber los IDs:
+
+```
+http://172.16.35.2/escuadron-api/quizzes?courseid=51
+```
+
+> GitHub Pages sirve el juego por **HTTPS** y la API es **HTTP**; el navegador
+> bloquea esa mezcla. Para Moodle usa la copia HTTP servida en el servidor.
+
+El plugin `format_quizdump` expone las funciones `format_quizdump_get_quizzes`
+y `format_quizdump_get_quiz_questions` con el token de Moodle. La API guarda
+ese token en el servidor, nunca en el navegador.
+
+### Sin instalar ningún plugin: exportar el cuestionario
+
+Como alternativa, exporta el cuestionario (**Banco de preguntas → Exportar →
+Moodle XML**) y conviértelo con la API:
 
 ```bash
 cd api
@@ -86,22 +107,14 @@ python import_moodle.py cuestionario.xml --name http
 MOODLE_URL=none uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-El juego usa la API con `quiz=http` (o vacío si solo hay uno). No hace falta token ni tocar el servidor de Moodle; solo repetir la exportación cuando cambien las preguntas.
+El juego usa la API con `quiz=http` (o vacío si solo hay uno). No hace falta
+token ni tocar Moodle; solo repetir la exportación cuando cambien las preguntas.
 
-### API intermedia en Python (opcional)
+### Alternativa: plugin local `local_lwpd`
 
-Si prefieres no exponer la clave de Moodle al navegador, hay una API en [`api/`](/jrubioastigarraga/la-web-por-dentro/tree/main/api):
-
-```
-Juego  ->  API Python (FastAPI)  ->  Moodle (plugin local_lwpd)
-```
-
-- La clave de Moodle vive solo en la API.
-- El juego solo necesita la URL de la API y el cmid.
-- Incluye CORS, caché y límite de peticiones.
-- Se despliega en Render, Railway, Fly.io o Docker.
-
-Consulta [`api/README.md`](/jrubioastigarraga/la-web-por-dentro/blob/main/api/README.md). En el juego, rellena el campo **API (proxy)** con la URL de la API.
+Si prefieres no usar token y servir un endpoint propio, existe el plugin
+`local_lwpd` en [`moodle/local_lwpd.zip`](/jrubioastigarraga/la-web-por-dentro/raw/main/moodle/local_lwpd.zip).
+No es el que está desplegado; la vía actual es `format_quizdump` + API.
 
 ## Modos
 

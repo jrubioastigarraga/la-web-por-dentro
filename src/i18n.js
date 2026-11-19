@@ -67,9 +67,9 @@ const STRINGS = {
       'Si usas la API de Python, pon aquí su URL. Tiene prioridad sobre el servidor.',
     moodleServer: 'Servidor',
     moodleKey: 'Clave de acceso',
-    moodleQuiz: 'Cuestionario (cmid o nombre)',
+    moodleQuiz: 'Cuestionario (cmid, nombre o course:ID)',
     moodleQuizHint:
-      'ID del cuestionario en Moodle (mod/quiz/view.php?id=...) o nombre del cuestionario importado (por ejemplo "http"). Si lo dejas vacío y solo hay uno, se usará ese.',
+      'Con la API de Moodle: course:3 para todo un curso o quiz:15 para un cuestionario. También acepta el nombre de un cuestionario importado. Si lo dejas vacío y solo hay uno, se usará ese.',
     moodleIds: 'IDs de preguntas',
     moodleIdsHint:
       'Solo si no usas el ID del cuestionario. Sepáralos por comas.',
@@ -154,9 +154,9 @@ const STRINGS = {
       'Python APIa erabiltzen baduzu, jarri hemen bere URLa. Zerbitzariaren gainetik lehentasuna du.',
     moodleServer: 'Zerbitzaria',
     moodleKey: 'Sarbide-gakoa',
-    moodleQuiz: 'Galdetegia (cmid edo izena)',
+    moodleQuiz: 'Galdetegia (cmid, izena edo course:ID)',
     moodleQuizHint:
-      'Moodlen duen galdetegiaren IDa (mod/quiz/view.php?id=...) edo inportatutako galdetegiaren izena (adibidez "http"). Hutsik uzten baduzu eta bakarra badago, hura erabiliko da.',
+      'Moodle APIarekin: course:3 ikastaro osoa lortzeko edo quiz:15 galdetegi bat lortzeko. Inportatutako galdetegi baten izena ere onartzen du. Hutsik uzten baduzu eta bakarra badago, hura erabiliko da.',
     moodleIds: 'Galderen IDak',
     moodleIdsHint:
       'Soilik galdetegiaren IDa erabiltzen ez baduzu. Banatu komaz.',

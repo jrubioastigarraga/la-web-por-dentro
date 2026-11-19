@@ -1,15 +1,63 @@
 # API de Escuadrón Web (Python)
 
-Proxy entre el juego y el plugin `local_lwpd` de Moodle.
+Proxy entre el juego y Moodle.
 
 ```
-Navegador / Pico 4  ->  esta API  ->  Moodle (/local/lwpd/vrquestions.php)
+Navegador / Pico 4  ->  esta API  ->  Moodle (format_quizdump o local_lwpd)
 ```
 
-La **clave de Moodle** vive en esta API, nunca en el navegador. El juego solo
-necesita la URL de la API y, si quieres, el cmid del cuestionario.
+La **clave/token de Moodle** vive en esta API, nunca en el navegador. El juego
+solo necesita la URL de la API y, si quieres, el quiz o curso.
 
-## Dos formas de servir preguntas
+## Instancia desplegada
+
+- Juego: **http://172.16.35.2/la-web-por-dentro/**
+- API: **http://172.16.35.2/escuadron-api**
+- Servicio: `escuadron-api` (systemd) en `127.0.0.1:8001`, publicado por Caddy
+  en `/escuadron-api/*`.
+- Token de Moodle en `/home/ule/escuadron-api/.env` (permisos 600, fuera de Git).
+
+Ejemplo:
+
+```
+http://172.16.35.2/la-web-por-dentro/?api=http://172.16.35.2/escuadron-api&quiz=quiz:39&start=1
+```
+
+> El juego y la API deben servirse por el **mismo esquema** (HTTP o HTTPS).
+> GitHub Pages es HTTPS y la API es HTTP, así que para Moodle usa la copia
+> servida en `http://172.16.35.2/la-web-por-dentro/`.
+
+## Moodle con `format_quizdump`
+
+La API usa el token del servidor para llamar a:
+
+- `format_quizdump_get_quizzes` (`courseid`)
+- `format_quizdump_get_quiz_questions` (`quizid`)
+
+Configura en el `.env` del servidor:
+
+```env
+MOODLE_URL=https://moodle.lhusurbil.eus
+MOODLE_TOKEN=tu_token
+```
+
+Y pide:
+
+| Petición | Resultado |
+| --- | --- |
+| `/questions?quiz=quiz:39` | Preguntas del quiz 39 |
+| `/questions?quiz=course:51` | Todas las preguntas de los quizzes del curso 51 |
+| `/quizzes?courseid=51` | Lista de quizzes del curso (id, cmid, nombre, nº preguntas) |
+
+El juego acepta lo mismo en el campo **Cuestionario**:
+
+- `quiz:39`
+- `course:51`
+
+El plugin instalado debe ser la versión parcheada:
+[`moodle/format_quizdump.zip`](/jrubioastigarraga/la-web-por-dentro/raw/main/moodle/format_quizdump.zip).
+
+## Alternativas
 
 ### A) Moodle en vivo (requiere el plugin)
 

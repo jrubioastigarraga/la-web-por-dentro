@@ -25,6 +25,7 @@ Variables de entorno:
 from __future__ import annotations
 
 import glob
+import html
 import json
 import os
 import re
@@ -42,6 +43,8 @@ MOODLE_URL = (
     if _moodle_env.lower() in ("", "none", "off", "-")
     else _moodle_env.rstrip("/")
 )
+MOODLE_TOKEN = os.getenv("MOODLE_TOKEN", "").strip()
+MOODLE_WS = f"{MOODLE_URL}/webservice/rest/server.php" if MOODLE_URL else ""
 MOODLE_KEY = os.getenv("MOODLE_KEY", "").strip()
 API_KEY = os.getenv("API_KEY", "").strip()
 ALLOWED_ORIGINS = [
@@ -94,11 +97,137 @@ def _check_api_key(request: Request) -> None:
 
 
 def _valid_quiz(value: str) -> bool:
-    return value == "auto" or bool(re.fullmatch(r"[A-Za-z0-9_-]{1,64}", value))
+    return value == "auto" or bool(re.fullmatch(r"[A-Za-z0-9_:-]{1,64}", value))
 
 
 def _valid_ids(value: str) -> bool:
     return bool(re.fullmatch(r"[\d,\s]+", value)) and any(ch.isdigit() for ch in value)
+
+
+def _clean(value: Any) -> str:
+    text = re.sub(r"<br\s*/?>", " ", str(value or ""), flags=re.IGNORECASE)
+    text = re.sub(r"</p\s*>", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = html.unescape(text).replace("\xa0", " ")
+    text = re.sub(r"\{mlang[^}]*\}", "", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+async def _moodle_ws(function: str, params: dict[str, Any]) -> Any:
+    """Llama a un Web Service de Moodle con el token del servidor."""
+    if not MOODLE_WS or not MOODLE_TOKEN:
+        raise HTTPException(status_code=503, detail="Moodle token no configurado")
+
+    data = {
+        "wstoken": MOODLE_TOKEN,
+        "wsfunction": function,
+        "moodlewsrestformat": "json",
+    }
+    data.update(params)
+
+    try:
+        async with httpx.AsyncClient(timeout=MOODLE_TIMEOUT) as client:
+            response = await client.post(MOODLE_WS, data=data)
+    except httpx.HTTPError as error:
+        raise HTTPException(
+            status_code=502,
+            detail=f"No se pudo contactar con Moodle: {error.__class__.__name__}",
+        ) from error
+
+    if response.status_code != 200:
+        raise HTTPException(
+            status_code=502, detail=f"Moodle HTTP {response.status_code}"
+        )
+
+    try:
+        payload = response.json()
+    except ValueError as error:
+        raise HTTPException(
+            status_code=502, detail="Moodle no devolvió JSON"
+        ) from error
+
+    if isinstance(payload, dict) and payload.get("exception"):
+        raise HTTPException(
+            status_code=502,
+            detail=f"{payload.get('errorcode')}: {payload.get('message')}",
+        )
+    return payload
+
+
+def _map_quizdump_questions(questions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Convierte las preguntas de format_quizdump al formato del juego."""
+    result = []
+
+    for question in questions or []:
+        if not question.get("supported"):
+            continue
+        if question.get("qtype") not in ("multichoice", "truefalse"):
+            continue
+
+        text = _clean(question.get("questiontextplain") or question.get("questiontext"))
+        if not text:
+            continue
+
+        options = []
+        fractions = []
+        for answer in question.get("answers") or []:
+            option = _clean(answer.get("answerplain") or answer.get("answer"))
+            if not option:
+                continue
+            options.append(option)
+            fractions.append(float(answer.get("fraction") or 0))
+
+        if len(options) < 2:
+            continue
+
+        best = max(fractions)
+        if best <= 0:
+            continue
+        if fractions.count(best) != 1:
+            continue  # Varias correctas: no encaja en el juego.
+        correct = fractions.index(best)
+
+        why = _clean(question.get("generalfeedback"))
+        if not why:
+            why = f"Respuesta correcta: {options[correct]}"
+
+        result.append(
+            {
+                "q": text,
+                "options": options,
+                "correct": correct,
+                "why": why,
+            }
+        )
+
+    return result
+
+
+async def _quizdump_questions(courseid: str, quizid: str) -> list[dict[str, Any]]:
+    """Preguntas de un curso (todos sus quizzes) o de un quiz concreto."""
+    if quizid:
+        payload = await _moodle_ws(
+            "format_quizdump_get_quiz_questions", {"quizid": int(quizid)}
+        )
+        return _map_quizdump_questions(payload.get("questions") or [])
+
+    payload = await _moodle_ws(
+        "format_quizdump_get_quizzes", {"courseid": int(courseid)}
+    )
+    quizzes = payload.get("quizzes") or []
+    questions: list[dict[str, Any]] = []
+
+    for quiz in quizzes:
+        try:
+            detail = await _moodle_ws(
+                "format_quizdump_get_quiz_questions",
+                {"quizid": int(quiz["id"])},
+            )
+        except HTTPException:
+            continue
+        questions.extend(_map_quizdump_questions(detail.get("questions") or []))
+
+    return questions
 
 
 def _load_local() -> dict[str, dict[str, Any]]:
@@ -178,13 +307,31 @@ async def health() -> dict[str, Any]:
     return {
         "ok": True,
         "moodle": MOODLE_URL or None,
+        "quizdump": bool(MOODLE_TOKEN),
         "imported": sorted(local.keys()),
         "cache_ttl": CACHE_TTL,
     }
 
 
 @app.get("/quizzes")
-async def quizzes() -> dict[str, Any]:
+async def quizzes(courseid: str | None = Query(default=None)) -> dict[str, Any]:
+    if courseid:
+        payload = await _moodle_ws(
+            "format_quizdump_get_quizzes", {"courseid": int(courseid)}
+        )
+        return {
+            "quizzes": [
+                {
+                    "id": quiz.get("id"),
+                    "cmid": quiz.get("cmid"),
+                    "name": _clean(quiz.get("name")),
+                    "questioncount": quiz.get("questioncount"),
+                    "url": quiz.get("url"),
+                }
+                for quiz in payload.get("quizzes") or []
+            ]
+        }
+
     local = _load_local()
     return {
         "quizzes": [
@@ -211,6 +358,21 @@ async def questions(
     if ids and not _valid_ids(ids):
         raise HTTPException(status_code=400, detail="Invalid question ids")
 
+    courseid = (request.query_params.get("courseid") or "").strip()
+    quizid = (request.query_params.get("quizid") or "").strip()
+
+    if quiz.startswith("course:"):
+        courseid = quiz[7:].strip()
+        quiz = ""
+    elif quiz.startswith("quiz:"):
+        quizid = quiz[5:].strip()
+        quiz = ""
+
+    if courseid and not courseid.isdigit():
+        raise HTTPException(status_code=400, detail="Invalid courseid")
+    if quizid and not quizid.isdigit():
+        raise HTTPException(status_code=400, detail="Invalid quizid")
+
     local = _load_local()
 
     # 1) Cuestionario importado desde Moodle XML.
@@ -230,7 +392,34 @@ async def questions(
                 headers={"X-Source": "local", "X-Quiz": name},
             )
 
-    # 2) Moodle en vivo (plugin local_lwpd).
+    # 2) Plugin format_quizdump (Moodle en vivo, por curso o por quiz).
+    if not ids and MOODLE_TOKEN:
+        # Si escriben un número suelto, se interpreta como quiz id.
+        if not courseid and not quizid and quiz.isdigit():
+            quizid = quiz
+            quiz = ""
+
+        if courseid or quizid:
+            cache_key = f"quizdump:course:{courseid}:quiz:{quizid}"
+            cached = _cache_get(cache_key)
+            if cached is not None:
+                return JSONResponse(cached, headers={"X-Cache": "HIT"})
+
+            questions = await _quizdump_questions(courseid, quizid)
+            if not questions:
+                raise HTTPException(
+                    status_code=502,
+                    detail="No hay preguntas multichoice/truefalse utilizables en ese cuestionario",
+                )
+
+            payload = {"questions": questions}
+            _cache_set(cache_key, payload)
+            return JSONResponse(
+                payload,
+                headers={"X-Source": "quizdump", "X-Cache": "MISS"},
+            )
+
+    # 3) Moodle en vivo con el plugin local_lwpd.
     if not MOODLE_URL:
         raise HTTPException(
             status_code=503,
