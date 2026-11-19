@@ -306,7 +306,7 @@ export function disposeObject(root) {
     const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
     for (const mat of materials) {
       for (const key of ['map', 'alphaMap', 'emissiveMap']) {
-        if (mat[key]) mat[key].dispose();
+        if (mat[key] && !mat[key].__shared) mat[key].dispose();
       }
       mat.dispose();
     }
@@ -344,8 +344,55 @@ export function beep(freq = 620, dur = 0.08, type = 'sine', gain = 0.045) {
   osc.stop(audio.currentTime + dur);
 }
 
+let noiseBuffer = null;
+
+function getNoise(ctx) {
+  if (noiseBuffer && noiseBuffer.sampleRate === ctx.sampleRate) return noiseBuffer;
+  const length = Math.floor(ctx.sampleRate * 0.7);
+  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i++) {
+    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 1.6);
+  }
+  noiseBuffer = buffer;
+  return buffer;
+}
+
+export function noiseBurst(dur = 0.3, gain = 0.06, cutoff = 900, type = 'lowpass') {
+  if (!audio) return;
+  const src = audio.createBufferSource();
+  src.buffer = getNoise(audio);
+
+  const filter = audio.createBiquadFilter();
+  filter.type = type;
+  filter.frequency.value = cutoff;
+
+  const amp = audio.createGain();
+  amp.gain.setValueAtTime(gain, audio.currentTime);
+  amp.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + dur);
+
+  src.connect(filter);
+  filter.connect(amp);
+  amp.connect(audio.destination);
+  src.start();
+  src.stop(audio.currentTime + dur);
+}
+
 export const sfx = {
   click: () => beep(540, 0.055, 'triangle', 0.035),
+  shot: () => {
+    beep(1300, 0.035, 'square', 0.012);
+    noiseBurst(0.05, 0.012, 3200, 'highpass');
+  },
+  boom: () => {
+    noiseBurst(0.5, 0.085, 700);
+    beep(64, 0.32, 'sine', 0.07);
+  },
+  stage: () => {
+    [523, 659, 784].forEach((f, i) =>
+      setTimeout(() => beep(f, 0.16, 'triangle', 0.04), i * 90)
+    );
+  },
   ok: () => {
     beep(680, 0.1, 'sine', 0.05);
     setTimeout(() => beep(1020, 0.14, 'sine', 0.045), 95);

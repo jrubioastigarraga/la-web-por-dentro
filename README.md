@@ -24,6 +24,14 @@ Arcade de aviones en **3D y realidad virtual** para el ciclo de **Desarrollo de 
 
 ![Partida del arcade](/jrubioastigarraga/la-web-por-dentro/raw/main/docs/arcade.png)
 
+**Presentación arcade**
+
+- Mar con scroll vertical, islas, nubes y espuma en varias capas de parallax.
+- Aviones dibujados a mano en canvas, con hélice giratoria, sombra y luces de alas.
+- Explosiones con bola de fuego, humo, metralla, onda expansiva y flash de daño.
+- HUD de recreativa dentro de la pantalla: `1UP`, puntuación, vidas, progreso y rótulos de `STAGE`.
+- Cada sector cambia la luz del océano (día, atardecer, crepúsculo, frío y amanecer).
+
 **Realidad virtual**
 
 - Abre la URL en el navegador del visor (probado con Meta Quest) y pulsa **Enter VR**.
@@ -74,6 +82,7 @@ src/
   util.js              tarjetas, etiquetas, aviones, audio y utilidades
   arcade/
     questions.js       bancos de preguntas de las cinco asignaturas
+    art.js             mar con scroll, aviones, marcos, HUD y texturas
     game.js            motor del arcade: oleadas, disparos, vidas y sectores
 ```
 
