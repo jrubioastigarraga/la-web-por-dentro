@@ -1,106 +1,115 @@
-# Preguntas de Moodle para Escuadrón Web
+# Plugin de Moodle para Escuadrón Web
 
-Moodle **no permite obtener una pregunta por su ID** con los Web Services
-estándar. Por eso el juego usa un pequeño endpoint de solo lectura que:
+Plugin local **`local_lwpd`** que expone un endpoint de solo lectura con las
+preguntas de los cuestionarios que autorices. Se instala como cualquier plugin
+de Moodle y se configura desde la administración, sin editar PHP a mano.
 
-- Solo sirve preguntas de los **cuestionarios que autorices** (`LWPD_QUIZ_IDS`).
+- Solo sirve preguntas de los **cuestionarios permitidos** (`LWPD_QUIZ_IDS`).
 - Comprueba que el cuestionario y su curso estén **visibles**.
 - No devuelve datos de usuarios, intentos ni calificaciones.
+- Compatible con **Moodle 4.x y 5.x** (usa `question_references` y
+  `question_versions`; mantiene el fallback de 3.x).
 
 ## Instalación
 
-1. Copia la carpeta `local/lwpd` a la raíz de tu Moodle:
+### Opción A: ZIP (recomendada)
 
-   ```
-   /var/www/moodle/local/lwpd/vrquestions.php
-   ```
+1. Descarga [`moodle/local_lwpd.zip`](/jrubioastigarraga/la-web-por-dentro/raw/main/moodle/local_lwpd.zip).
+2. En Moodle: **Administración del sitio → Plugins → Instalar plugins →
+   Subir ZIP**.
+3. Sigue el asistente y visita la página de notificaciones para completar la
+   instalación.
+4. Si tenías el antiguo `local/lwpd/questions.php` subido a mano, **bórralo**.
 
-2. Abre `vrquestions.php` y configura los cuestionarios permitidos:
+### Opción B: copiar la carpeta
 
-   ```php
-   // cmid del cuestionario: mod/quiz/view.php?id=1234
-   define('LWPD_QUIZ_IDS', '1234');
-   ```
+Copia `moodle/plugin/lwpd` a la raíz de Moodle como `local/lwpd` y visita
+**Administración del sitio → Notificaciones**.
 
-   Puedes poner varios separados por comas. **Solo se servirán preguntas de
-   esos cuestionarios.** Si el cuestionario o su curso están ocultos, no
-   devuelve nada.
+## Configuración
 
-   Opcionalmente:
+**Administración del sitio → Plugins → Plugins locales → Escuadrón Web
+(preguntas)**.
 
-   ```php
-   // Clave extra (si la pones, el juego debe enviarla)
-   define('LWPD_KEY', 'una-clave-larga');
+| Ajuste | Qué hace |
+| --- | --- |
+| **cmid de cuestionarios permitidos** | IDs de módulo separados por comas (`mod/quiz/view.php?id=1234`). Solo se sirven preguntas de esos cuestionarios visibles. |
+| **IDs de pregunta adicionales** | Lista blanca extra, opcional. |
+| **Clave de acceso** | Si la defines, el juego debe enviarla en la cabecera `X-LWPD-Key`. |
+| **Origen permitido** | Por ejemplo `https://jrubioastigarraga.github.io`. Vacío = cualquier origen. |
+| **Exigir sesión de Moodle** | Solo responde a usuarios con sesión iniciada. El navegador puede no enviar cookies entre dominios. |
 
-   // Limitar el origen del navegador
-   define('LWPD_ALLOWED_ORIGIN', 'https://jrubioastigarraga.github.io');
+El **cmid** es el `id` de `mod/quiz/view.php?id=1234`, no el id interno del
+quiz.
 
-   // Lista blanca adicional de IDs de pregunta
-   define('LWPD_ALLOWED_IDS', '101,102');
-   ```
+## Comprobar
 
-3. Comprueba que responde:
+```
+https://moodle.lhusurbil.eus/local/lwpd/vrquestions.php?quiz=1234
+```
 
-   ```
-   https://moodle.lhusurbil.eus/local/lwpd/vrquestions.php?quiz=1234
-   ```
+Y sin cmid, si solo hay un cuestionario autorizado:
 
-   Y sin cmid, si solo hay un cuestionario autorizado:
+```
+https://moodle.lhusurbil.eus/local/lwpd/vrquestions.php?quiz=auto
+```
 
-   ```
-   https://moodle.lhusurbil.eus/local/lwpd/vrquestions.php?quiz=auto
-   ```
+Debe devolver un JSON como:
 
-   También acepta IDs concretos (si pertenecen a los cuestionarios permitidos):
+```json
+{
+  "questions": [
+    {
+      "id": 101,
+      "q": "¿Qué registro DNS asocia un nombre a una IPv4?",
+      "options": ["A", "AAAA", "MX", "CNAME"],
+      "correct": 0,
+      "why": "El registro A asocia un nombre a una IPv4."
+    }
+  ]
+}
+```
 
-   ```
-   ...?ids=101,102,103&key=TU_CLAVE
-   ```
+Solo se admiten preguntas `multichoice` y `truefalse`. Las preguntas
+aleatorias no se pueden resolver sin un intento, así que se ignoran.
 
 ## En el juego
 
-En la pantalla inicial, pulsa **Moodle** y elige una de las dos formas:
+En la pantalla inicial, pulsa **Moodle**:
 
-- **Cuestionario (cmid)**: pones el ID del cuestionario y se cargan todas sus
-  preguntas. **Si solo autorizas un cuestionario en `LWPD_QUIZ_IDS`, puedes
-  dejar este campo vacío**: el servidor usará ese automáticamente.
-- **IDs de preguntas**: solo si necesitas una selección concreta. Deben
-  pertenecer a los cuestionarios autorizados en `LWPD_QUIZ_IDS`.
+- **Cuestionario (cmid)**: si autorizas varios, indica cuál. Si solo hay uno,
+  déjalo vacío y se usará automáticamente.
+- **IDs de preguntas**: solo si necesitas una selección concreta.
 
-Cada pregunta se convierte en una pantalla (`STAGE`) de la partida.
+Cada pregunta se convierte en una pantalla (`STAGE`).
 
-## Enlace directo para Pico 4
-
-El juego acepta configuración por URL:
+También puedes usar un enlace directo, cómodo en Pico 4:
 
 ```
 https://jrubioastigarraga.github.io/la-web-por-dentro/?quiz=1234&start=1
 ```
 
-Con `#key=...` para la primera vez (se borra de la barra al guardarla):
+Si has definido clave:
 
 ```
 https://.../?quiz=1234&start=1#key=TU_CLAVE
 ```
 
-Así el alumnado solo abre el enlace (o lo guarda en favoritos) y no tiene que
-teclear nada.
+La clave se guarda y se borra de la barra de direcciones.
 
 ## Seguridad
 
-- La restricción principal es **el cuestionario**: aunque alguien conozca la
-  URL, solo puede pedir preguntas de los cuestionarios configurados y visibles.
-- La clave es una capa extra, no autenticación real: si la usas, vive en el
-  navegador. Para preguntas confidenciales, sirve el juego desde Moodle y
-  protege el endpoint con `require_login()`.
-- El endpoint es de solo lectura y solo admite `multichoice` y `truefalse`.
-- Las preguntas aleatorias de un cuestionario no se pueden resolver sin un
-  intento; usa preguntas fijas para el juego.
+- La restricción principal es **el cuestionario**: el endpoint no sirve
+  preguntas fuera de los cuestionarios configurados.
+- La clave es una capa extra; si la usas, vive en el navegador. Para preguntas
+  confidenciales, activa **Exigir sesión de Moodle** y sirve el juego desde el
+  propio Moodle para que la sesión funcione.
+- El endpoint es de solo lectura.
 
 ## Notas
 
 - Si tu Moodle está detrás de un proxy, comprueba que `/local/lwpd/` es
   accesible desde fuera.
-- En Moodle 4.x el endpoint resuelve las versiones de pregunta mediante
-  `question_references` y `question_versions`; en 3.x usa
-  `quiz_slots.questionid`.
+- En Moodle 5.x los cuestionarios pueden tener su propio banco de preguntas;
+  el plugin resuelve las preguntas a través de las referencias del quiz, así
+  que funciona igual.

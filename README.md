@@ -61,7 +61,7 @@ El botón **ES / EU** de la barra superior cambia toda la interfaz: menú, panel
 
 En la pantalla inicial, el botón **Moodle** permite cargar preguntas de un cuestionario concreto antes de jugar:
 
-1. Instala una sola vez el endpoint `moodle/local/lwpd/vrquestions.php` en tu Moodle y configura allí los cuestionarios permitidos (ver [`moodle/README.md`](/jrubioastigarraga/la-web-por-dentro/blob/main/moodle/README.md)).
+1. Instala el **plugin local** `local_lwpd` desde [`moodle/local_lwpd.zip`](/jrubioastigarraga/la-web-por-dentro/raw/main/moodle/local_lwpd.zip) y configura allí los cuestionarios permitidos (ver [`moodle/README.md`](/jrubioastigarraga/la-web-por-dentro/blob/main/moodle/README.md)).
 2. En el juego, pulsa **Moodle** y escribe:
    - el servidor (`https://moodle.lhusurbil.eus`),
    - el **ID del cuestionario** (`cmid`) o, si lo prefieres, los IDs de preguntas,
@@ -112,7 +112,8 @@ src/
     art.js             mar con scroll, aviones, marcos, HUD y texturas
     game.js            motor del arcade: oleadas, disparos, vidas y sectores
 moodle/
-  local/lwpd/vrquestions.php   endpoint de solo lectura para Moodle
+  plugin/lwpd/              plugin local local_lwpd (código fuente)
+  local_lwpd.zip            plugin listo para instalar en Moodle
 ```
 
 ### Añadir o cambiar preguntas

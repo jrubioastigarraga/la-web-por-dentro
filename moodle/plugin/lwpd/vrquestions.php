@@ -1,51 +1,39 @@
 <?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
 /**
  * Endpoint de solo lectura para "Escuadrón Web".
  *
- * Dos modos:
  *   GET /local/lwpd/vrquestions.php?quiz=123
  *   GET /local/lwpd/vrquestions.php?quiz=auto
  *   GET /local/lwpd/vrquestions.php?ids=101,102,103
  *
- * La clave es opcional; si se define, debe enviarse en la cabecera
- * X-LWPD-Key (o en ?key= para pruebas desde el navegador).
- *
- * Seguridad: el endpoint NO sirve preguntas sueltas de todo el banco. Solo
- * devuelve preguntas que pertenezcan a los cuestionarios configurados en
- * LWPD_QUIZ_IDS (y que estén visibles). Con LWPD_ALLOWED_IDS se puede añadir
- * una lista blanca extra.
+ * Configuración: Administración del sitio → Plugins → Plugins locales →
+ * "Escuadrón Web (preguntas)".
  */
 
-/* -------------------------------------------------------------------------
- * CONFIGURACIÓN
- * ---------------------------------------------------------------------- */
+require_once(__DIR__ . '/../../config.php');
+require_once($CFG->dirroot . '/course/lib.php');
 
-// Cuestionarios permitidos, por cmid (el id de la URL mod/quiz/view.php?id=NNN).
-// Ejemplo: define('LWPD_QUIZ_IDS', '1234,5678');
-// Es la forma recomendada de limitar el endpoint.
-define('LWPD_QUIZ_IDS', '');
+$quizids = (string)get_config('local_lwpd', 'quizids');
+$extraids = (string)get_config('local_lwpd', 'allowedids');
+$accesskey = (string)get_config('local_lwpd', 'key');
+$allowedorigin = (string)get_config('local_lwpd', 'allowedorigin');
+$requirelogin = (bool)get_config('local_lwpd', 'requirelogin');
 
-// Lista blanca adicional de IDs de pregunta (opcional).
-define('LWPD_ALLOWED_IDS', '');
-
-// Clave opcional. Si está vacía, no se pide clave.
-define('LWPD_KEY', '');
-
-// Origen permitido para el navegador (opcional).
-// Ejemplo: define('LWPD_ALLOWED_ORIGIN', 'https://jrubioastigarraga.github.io');
-define('LWPD_ALLOWED_ORIGIN', '');
-
-/* ---------------------------------------------------------------------- */
-
-$allowedOrigin = LWPD_ALLOWED_ORIGIN;
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
 header('Access-Control-Allow-Headers: X-LWPD-Key, Content-Type');
 
-if ($allowedOrigin !== '') {
-    header('Access-Control-Allow-Origin: ' . $allowedOrigin);
+if ($allowedorigin !== '') {
+    header('Access-Control-Allow-Origin: ' . $allowedorigin);
     header('Vary: Origin');
 } else {
     header('Access-Control-Allow-Origin: *');
@@ -55,9 +43,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
-
-require_once(__DIR__ . '/../../config.php');
-require_once($CFG->dirroot . '/course/lib.php');
 
 /* ------------------------------------------------------------------ utils */
 
@@ -85,9 +70,9 @@ function lwpd_fail($code, $status = 400) {
 
 /**
  * Comprueba que el cuestionario existe, está visible y su curso también.
- * Devuelve el registro de quiz o null.
  */
 function lwpd_visible_quiz($cmid) {
+    global $DB;
     $cm = get_coursemodule_from_id('quiz', (int)$cmid, 0, false, IGNORE_MISSING);
     if (!$cm || empty($cm->visible) || !empty($cm->deletioninprogress)) {
         return null;
@@ -96,13 +81,14 @@ function lwpd_visible_quiz($cmid) {
     if (!$course || empty($course->visible)) {
         return null;
     }
-    $quiz = $GLOBALS['DB']->get_record('quiz', ['id' => $cm->instance], '*', IGNORE_MISSING);
+    $quiz = $DB->get_record('quiz', ['id' => $cm->instance], '*', IGNORE_MISSING);
     return $quiz ?: null;
 }
 
 /**
  * IDs de las preguntas fijas de un cuestionario.
- * Soporta Moodle 3.x (quiz_slots.questionid) y 4.x (question_references).
+ * Moodle 4.x/5.x: question_references + question_versions.
+ * Moodle 3.x: quiz_slots.questionid.
  */
 function lwpd_quiz_question_ids($quizid) {
     global $DB;
@@ -188,22 +174,26 @@ function lwpd_question_payload($question) {
 
 /* -------------------------------------------------------------- seguridad */
 
-$quizCms = lwpd_ids(LWPD_QUIZ_IDS);
-$extraIds = lwpd_ids(LWPD_ALLOWED_IDS);
+if ($requirelogin) {
+    require_login();
+}
+
+$quizCms = lwpd_ids($quizids);
+$extraIds = lwpd_ids($extraids);
 
 if (!$quizCms && !$extraIds) {
     lwpd_fail('endpoint-not-configured', 503);
 }
 
-if (LWPD_KEY !== '') {
+if ($accesskey !== '') {
     $key = $_SERVER['HTTP_X_LWPD_KEY'] ?? optional_param('key', '', PARAM_TEXT);
-    if (!hash_equals(LWPD_KEY, $key)) {
+    if (!hash_equals($accesskey, $key)) {
         lwpd_fail('forbidden', 403);
     }
 }
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-if ($allowedOrigin !== '' && $origin !== '' && $origin !== $allowedOrigin) {
+if ($allowedorigin !== '' && $origin !== '' && $origin !== $allowedorigin) {
     lwpd_fail('forbidden-origin', 403);
 }
 
@@ -227,7 +217,7 @@ foreach ($quizCms as $cmid) {
 $allowedQuestionIds = array_values(array_unique(array_merge($allowedQuestionIds, $extraIds)));
 
 if ($quizParamRaw === 'auto') {
-    // Sin cmid en el juego: se usa el unico cuestionario permitido y visible.
+    // Sin cmid en el juego: se usa el único cuestionario permitido y visible.
     $visibleQuizzes = array_keys($quizQuestionMap);
     if (count($visibleQuizzes) !== 1) {
         lwpd_fail('choose-quiz', 403);
@@ -238,19 +228,17 @@ if ($quizParamRaw === 'auto') {
 }
 
 if ($quizParam) {
-    // Modo "ID de cuestionario": devuelve todas sus preguntas.
-    if (!in_array((int)$quizParam, $quizCms, true)) {
+    if (!in_array($quizParam, $quizCms, true)) {
         lwpd_fail('quiz-not-allowed', 403);
     }
-    if (!isset($quizQuestionMap[(int)$quizParam])) {
+    if (!isset($quizQuestionMap[$quizParam])) {
         lwpd_fail('quiz-not-visible', 403);
     }
-    $requestedIds = $quizQuestionMap[(int)$quizParam];
+    $requestedIds = $quizQuestionMap[$quizParam];
 } else {
     if (!$requestedIds) {
         lwpd_fail('missing-ids');
     }
-    // Solo se permiten preguntas que estén en los cuestionarios autorizados.
     $requestedIds = array_values(array_intersect($requestedIds, $allowedQuestionIds));
     if (!$requestedIds) {
         lwpd_fail('id-not-allowed', 403);
