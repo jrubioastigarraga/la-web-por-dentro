@@ -116,6 +116,27 @@ Si prefieres no usar token y servir un endpoint propio, existe el plugin
 `local_lwpd` en [`moodle/local_lwpd.zip`](/jrubioastigarraga/la-web-por-dentro/raw/main/moodle/local_lwpd.zip).
 No es el que está desplegado; la vía actual es `format_quizdump` + API.
 
+## APK para Pico 4
+
+La APK está en [`android/EscuadronWeb.apk`](/jrubioastigarraga/la-web-por-dentro/raw/main/android/EscuadronWeb.apk).
+
+Es un **lanzador**: abre el juego en el navegador del Pico, que es el que ofrece
+**WebXR real**. Un WebView de Android no soporta sesiones inmersivas.
+
+1. Activa el **modo desarrollador** del Pico y permite orígenes desconocidos.
+2. Instálala por USB:
+
+   ```bash
+   adb install -r EscuadronWeb.apk
+   ```
+
+   o copia el APK al Pico y ábrelo.
+3. Abre **Escuadrón Web** → se abre el navegador con
+   `http://172.16.35.2/la-web-por-dentro/` → pulsa **Enter VR**.
+
+La URL se cambia en `android/app/src/main/res/values/strings.xml`. El Pico debe
+estar en la red de la escuela para llegar a `172.16.35.2`.
+
 ## Modos
 
 [](#modos)

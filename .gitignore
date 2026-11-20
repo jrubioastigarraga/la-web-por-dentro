@@ -8,3 +8,7 @@ api/.env
 api/.venv/
 __pycache__/
 *.pyc
+
+android/.gradle/
+android/local.properties
+android/app/build/
