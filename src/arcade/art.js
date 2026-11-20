@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { COLORS, FONT, roundRect } from '../util.js';
 import { t } from '../i18n.js';
 
+const rand = (min, max) => min + Math.random() * (max - min);
+
 /* --------------------------------------------------------------- lienzos */
 
 function makeCanvas(w, h) {
@@ -26,25 +28,43 @@ function toTexture(canvas, repeat = false) {
 
 export function makeSeaBaseTexture() {
   const { canvas, ctx } = makeCanvas(512, 512);
+
+  // Degradado profundo -> turquesa, con franjas de oleaje como en un 1942.
   const grad = ctx.createLinearGradient(0, 0, 0, 512);
-  grad.addColorStop(0, '#0a3358');
-  grad.addColorStop(0.35, '#0f4f7c');
-  grad.addColorStop(0.68, '#1476a2');
-  grad.addColorStop(1, '#1a93b4');
+  grad.addColorStop(0, '#062a4d');
+  grad.addColorStop(0.26, '#0a4a78');
+  grad.addColorStop(0.52, '#1178a6');
+  grad.addColorStop(0.78, '#1a9cc0');
+  grad.addColorStop(1, '#29b6cc');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, 512, 512);
 
-  // vetas de oleaje
-  for (let i = 0; i < 90; i++) {
-    const y = Math.random() * 512;
+  // Franjas horizontales de luz que se pierden hacia el horizonte.
+  for (let y = 0; y < 512; y += 8) {
+    ctx.fillStyle = `rgba(150,225,255,${0.012 + Math.random() * 0.018})`;
+    ctx.fillRect(0, y, 512, 2 + Math.random() * 3);
+  }
+
+  // Vetas de oleaje con espuma.
+  for (let i = 0; i < 130; i++) {
     const x = Math.random() * 512;
-    const w = 20 + Math.random() * 90;
-    ctx.strokeStyle = `rgba(180,235,255,${0.02 + Math.random() * 0.05})`;
-    ctx.lineWidth = 1 + Math.random() * 2;
+    const y = Math.random() * 512;
+    const w = 24 + Math.random() * 110;
+    ctx.strokeStyle = `rgba(195,240,255,${0.03 + Math.random() * 0.08})`;
+    ctx.lineWidth = 1 + Math.random() * 2.5;
+    ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(x, y);
-    ctx.quadraticCurveTo(x + w / 2, y - 5 - Math.random() * 6, x + w, y);
+    ctx.quadraticCurveTo(x + w / 2, y - 6 - Math.random() * 8, x + w, y);
     ctx.stroke();
+  }
+
+  // Destellos del sol sobre el agua.
+  for (let i = 0; i < 26; i++) {
+    const x = 180 + Math.random() * 150;
+    const y = Math.random() * 512;
+    ctx.fillStyle = `rgba(255,246,190,${0.03 + Math.random() * 0.1})`;
+    ctx.fillRect(x, y, 8 + Math.random() * 34, 1 + Math.random() * 2);
   }
 
   return toTexture(canvas);
@@ -54,21 +74,33 @@ export function makeWaterTexture() {
   const { canvas, ctx } = makeCanvas(256, 256);
   ctx.clearRect(0, 0, 256, 256);
 
-  for (let i = 0; i < 60; i++) {
+  // Crestas alargadas: se repiten al desplazarse y dan la sensación de velocidad.
+  for (let i = 0; i < 95; i++) {
     const x = Math.random() * 256;
     const y = Math.random() * 256;
-    const w = 6 + Math.random() * 26;
-    ctx.strokeStyle = `rgba(220,250,255,${0.05 + Math.random() * 0.12})`;
-    ctx.lineWidth = 1 + Math.random();
+    const w = 7 + Math.random() * 34;
+    const bright = Math.random() > 0.72;
+    ctx.strokeStyle = bright
+      ? `rgba(255,255,255,${0.16 + Math.random() * 0.2})`
+      : `rgba(195,245,255,${0.06 + Math.random() * 0.16})`;
+    ctx.lineWidth = bright ? 1.6 + Math.random() : 1 + Math.random() * 0.6;
+    ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(x, y);
-    ctx.quadraticCurveTo(x + w / 2, y - 3, x + w, y);
+    ctx.quadraticCurveTo(x + w / 2, y - 3 - Math.random() * 3, x + w, y);
     ctx.stroke();
+    if (bright) {
+      ctx.strokeStyle = 'rgba(120,220,245,0.18)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
   }
 
-  for (let i = 0; i < 40; i++) {
-    ctx.fillStyle = `rgba(255,255,255,${0.04 + Math.random() * 0.1})`;
-    ctx.fillRect(Math.random() * 256, Math.random() * 256, 1.5, 1.5);
+  // Chispas de espuma.
+  for (let i = 0; i < 70; i++) {
+    ctx.fillStyle = `rgba(255,255,255,${0.06 + Math.random() * 0.16})`;
+    const s = 1 + Math.random() * 1.8;
+    ctx.fillRect(Math.random() * 256, Math.random() * 256, s, s);
   }
 
   return toTexture(canvas, true);
@@ -151,6 +183,64 @@ export function makeIslandTexture(variant = 0) {
     ctx.stroke();
   }
 
+  // Palmeras: tronco curvado y hojas en abanico, muy de postal arcade.
+  const palmCount = 3 + (variant % 3);
+  for (let i = 0; i < palmCount; i++) {
+    const a = (i / palmCount) * Math.PI * 2 + rand(0, 0.6);
+    const r = radius * rand(0.18, 0.5);
+    const px = cx + Math.cos(a) * r;
+    const py = cy + Math.sin(a) * r * 0.8;
+    const h = rand(22, 38);
+    const lean = rand(-9, 9);
+
+    ctx.strokeStyle = 'rgba(20,50,25,0.35)';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(px + 2, py + 3);
+    ctx.quadraticCurveTo(px + lean * 0.6 + 2, py - h * 0.55 + 3, px + lean + 2, py - h + 3);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#7b5834';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.quadraticCurveTo(px + lean * 0.6, py - h * 0.55, px + lean, py - h);
+    ctx.stroke();
+
+    const topX = px + lean;
+    const topY = py - h;
+    ctx.fillStyle = variant % 2 ? '#2c8a4a' : '#247a40';
+    for (let f = 0; f < 6; f++) {
+      const angle = (f / 6) * Math.PI * 2 + rand(-0.2, 0.2);
+      ctx.beginPath();
+      ctx.moveTo(topX, topY);
+      ctx.quadraticCurveTo(
+        topX + Math.cos(angle) * 10 - 3,
+        topY + Math.sin(angle) * 6 - 7,
+        topX + Math.cos(angle) * 19,
+        topY + Math.sin(angle) * 10 + 3
+      );
+      ctx.quadraticCurveTo(
+        topX + Math.cos(angle) * 10 + 3,
+        topY + Math.sin(angle) * 6 + 3,
+        topX,
+        topY
+      );
+      ctx.fill();
+    }
+    ctx.fillStyle = '#a97b3c';
+    ctx.beginPath();
+    ctx.arc(topX, topY, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Espuma en la orilla.
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 2;
+  blobPath(ctx, cx, cy, radius * 1.05, 0.14);
+  ctx.stroke();
+
   return toTexture(canvas);
 }
 
@@ -160,10 +250,21 @@ export function makeCloudLayerTexture() {
   const { canvas, ctx } = makeCanvas(W, H);
 
   const puff = (x, y, r, alpha) => {
-    const grad = ctx.createRadialGradient(x, y, r * 0.08, x, y, r);
+    // Sombra inferior para dar volumen.
+    const shade = ctx.createRadialGradient(x, y + r * 0.3, r * 0.1, x, y + r * 0.25, r);
+    shade.addColorStop(0, `rgba(96,140,175,${alpha * 0.34})`);
+    shade.addColorStop(1, 'rgba(96,140,175,0)');
+    ctx.fillStyle = shade;
+    ctx.beginPath();
+    ctx.arc(x, y + r * 0.2, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Cúmulo iluminado.
+    const grad = ctx.createRadialGradient(x - r * 0.2, y - r * 0.25, r * 0.06, x, y, r);
     grad.addColorStop(0, `rgba(255,255,255,${alpha})`);
-    grad.addColorStop(0.5, `rgba(240,250,255,${alpha * 0.42})`);
-    grad.addColorStop(1, 'rgba(220,240,255,0)');
+    grad.addColorStop(0.45, `rgba(244,251,255,${alpha * 0.7})`);
+    grad.addColorStop(0.78, `rgba(214,236,250,${alpha * 0.25})`);
+    grad.addColorStop(1, 'rgba(200,225,245,0)');
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
@@ -171,18 +272,19 @@ export function makeCloudLayerTexture() {
   };
 
   // se dibuja también fuera de los bordes para que el bucle vertical sea continuo
-  for (let i = 0; i < 26; i++) {
+  for (let i = 0; i < 24; i++) {
     const x = Math.random() * W;
     const y = Math.random() * H;
-    const r = 46 + Math.random() * 86;
-    const alpha = 0.5 + Math.random() * 0.35;
+    const r = 44 + Math.random() * 90;
+    const alpha = 0.5 + Math.random() * 0.4;
 
     for (let k = 0; k < 3; k++) {
       const cx = x;
       const cy = y + (k - 1) * H;
       puff(cx, cy, r, alpha);
-      puff(cx + r * 0.55, cy + r * 0.22, r * 0.7, alpha * 0.8);
-      puff(cx - r * 0.6, cy + r * 0.26, r * 0.62, alpha * 0.7);
+      puff(cx + r * 0.55, cy + r * 0.22, r * 0.74, alpha * 0.85);
+      puff(cx - r * 0.6, cy + r * 0.26, r * 0.66, alpha * 0.75);
+      puff(cx + r * 0.1, cy - r * 0.35, r * 0.58, alpha * 0.8);
     }
   }
 
@@ -259,13 +361,126 @@ export function makeVignetteTexture() {
 }
 
 export function makeDangerTexture() {
-  const { canvas, ctx } = makeCanvas(512, 16);
-  ctx.clearRect(0, 0, 512, 16);
-  ctx.fillStyle = 'rgba(255,93,115,0.85)';
-  for (let x = 0; x < 512; x += 26) {
-    ctx.fillRect(x, 6, 14, 3);
+  const { canvas, ctx } = makeCanvas(512, 24);
+  ctx.clearRect(0, 0, 512, 24);
+
+  // Halo rojo difuso.
+  const glow = ctx.createLinearGradient(0, 0, 0, 24);
+  glow.addColorStop(0, 'rgba(255,40,70,0)');
+  glow.addColorStop(0.5, 'rgba(255,60,90,0.28)');
+  glow.addColorStop(1, 'rgba(255,40,70,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, 512, 24);
+
+  // Chevrones intermitentes.
+  for (let x = 0; x < 512; x += 28) {
+    ctx.fillStyle = 'rgba(255,235,235,0.95)';
+    ctx.beginPath();
+    ctx.moveTo(x + 2, 5);
+    ctx.lineTo(x + 14, 12);
+    ctx.lineTo(x + 2, 19);
+    ctx.lineTo(x + 7, 12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,70,95,0.85)';
+    ctx.fillRect(x + 12, 10, 12, 4);
   }
   return toTexture(canvas);
+}
+
+/* ------------------------------------------------------- CRT / power-ups */
+
+/**
+ * Textura de pantalla de recreativa: scanlines, viñeta y reflejo de cristal.
+ * Se coloca como una capa transparente sobre toda la zona de juego.
+ */
+function makeScreenFXTexture() {
+  const { canvas, ctx } = makeCanvas(1024, 640);
+  ctx.clearRect(0, 0, 1024, 640);
+
+  // Scanlines.
+  ctx.fillStyle = 'rgba(0,0,0,0.16)';
+  for (let y = 0; y < 640; y += 5) ctx.fillRect(0, y, 1024, 2);
+
+  // Viñeta de tubo.
+  const vignette = ctx.createRadialGradient(512, 320, 150, 512, 320, 620);
+  vignette.addColorStop(0, 'rgba(0,0,0,0)');
+  vignette.addColorStop(0.68, 'rgba(0,0,0,0.05)');
+  vignette.addColorStop(1, 'rgba(0,8,18,0.55)');
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, 1024, 640);
+
+  // Reflejo diagonal muy tenue.
+  const glare = ctx.createLinearGradient(0, 0, 1024, 640);
+  glare.addColorStop(0, 'rgba(210,245,255,0.10)');
+  glare.addColorStop(0.35, 'rgba(210,245,255,0.015)');
+  glare.addColorStop(0.55, 'rgba(210,245,255,0)');
+  glare.addColorStop(1, 'rgba(210,245,255,0.035)');
+  ctx.fillStyle = glare;
+  ctx.fillRect(0, 0, 1024, 640);
+
+  return toTexture(canvas);
+}
+
+/** Capa CRT lista para añadir a la escena (el llamador decide la posición). */
+export function makeScreenFX(width = 1.31, height = 0.865) {
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, height),
+    new THREE.MeshBasicMaterial({
+      map: makeScreenFXTexture(),
+      transparent: true,
+      opacity: 0.7,
+      depthWrite: false,
+      depthTest: false,
+      toneMapped: false,
+    })
+  );
+  mesh.renderOrder = 60;
+  mesh.userData.isLabel = true;
+  mesh.raycast = () => {};
+  return mesh;
+}
+
+/** Cápsula de power-up estilo 1942: P = cañones dobles, R = recarga rápida. */
+export function makePowerupTexture(letter) {
+  return cached(`power.${letter}`, () => {
+    const { canvas, ctx } = makeCanvas(128, 160);
+    const color = letter === 'P' ? '#4de2c5' : '#ffb454';
+
+    const halo = ctx.createRadialGradient(64, 80, 6, 64, 80, 74);
+    halo.addColorStop(0, `${color}66`);
+    halo.addColorStop(1, `${color}00`);
+    ctx.fillStyle = halo;
+    ctx.fillRect(0, 0, 128, 160);
+
+    roundRect(ctx, 22, 8, 84, 144, 30);
+    const body = ctx.createLinearGradient(22, 0, 106, 0);
+    body.addColorStop(0, '#0a1b28');
+    body.addColorStop(0.5, '#173a4a');
+    body.addColorStop(1, '#0a1b28');
+    ctx.fillStyle = body;
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 6;
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    roundRect(ctx, 30, 16, 12, 128, 8);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 18;
+    ctx.font = '800 64px ui-monospace, Consolas, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(letter, 64, 82);
+    ctx.shadowBlur = 0;
+
+    const texture = toTexture(canvas);
+    texture.__shared = true;
+    return texture;
+  });
 }
 
 /* ---------------------------------------------------------------- aviones */
@@ -426,6 +641,47 @@ export function makePlaneTexture(kind = 'player') {
     ctx.fillStyle = p.dark;
     ctx.fill();
   }
+
+  // nervaduras de las alas y carenado de las ametralladoras.
+  ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+  ctx.lineWidth = 1.5;
+  for (const dir of [-1, 1]) {
+    for (const x of [34, 58, 88]) {
+      ctx.beginPath();
+      ctx.moveTo(dir * x, -20);
+      ctx.lineTo(dir * (x + 6), 18);
+      ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.32)';
+    ctx.beginPath();
+    ctx.ellipse(dir * 46, -32, 3, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Refuerzos de la cabina y hélice en el morro.
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(0, -30, 13, 31, 0, -Math.PI * 0.9, -Math.PI * 0.15);
+  ctx.stroke();
+  ctx.fillStyle = '#e9f6ff';
+  ctx.beginPath();
+  ctx.arc(0, -88, 7, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = p.dark;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Escarapela de cola y número de escuadrón.
+  ctx.fillStyle = p.accent;
+  ctx.beginPath();
+  ctx.arc(0, 102, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = p.dark;
+  ctx.font = '800 11px ui-monospace, Consolas, monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('45', 0, 102);
 
   // escape / brillo
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
@@ -878,26 +1134,67 @@ export function makeBezel() {
     }
   }
 
-  // luces superiores
+  // Marquesina superior con bombillas.
+  const marquee = ctx.createLinearGradient(300, 6, 724, 40);
+  marquee.addColorStop(0, 'rgba(8,20,32,0.95)');
+  marquee.addColorStop(0.5, 'rgba(24,58,78,0.95)');
+  marquee.addColorStop(1, 'rgba(8,20,32,0.95)');
+  ctx.fillStyle = marquee;
+  roundRect(ctx, 296, 6, 432, 34, 10);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,180,84,0.7)';
+  ctx.lineWidth = 2;
+  roundRect(ctx, 296, 6, 432, 34, 10);
+  ctx.stroke();
+
   for (let i = 0; i < 3; i++) {
     ctx.beginPath();
-    ctx.arc(win.x + 22 + i * 20, 24, 4.5, 0, Math.PI * 2);
+    ctx.arc(win.x + 18 + i * 18, 24, 4.5, 0, Math.PI * 2);
     ctx.fillStyle = ['#4ade80', '#ffb454', '#ff5d73'][i];
-    ctx.globalAlpha = 0.9;
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 12;
     ctx.fill();
-    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
   }
-  ctx.fillStyle = 'rgba(255,180,84,0.75)';
+  ctx.fillStyle = '#ffd79a';
   ctx.font = `800 18px ${FONT}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(255,180,84,0.8)';
+  ctx.shadowBlur = 14;
   ctx.fillText('E S C U A D R Ó N   W E B   ·   1 9 4 5', 512, 23);
+  ctx.shadowBlur = 0;
 
-  // banda inferior discreta
-  ctx.fillStyle = 'rgba(255,255,255,0.14)';
+  // Marcadores laterales de recreativa.
+  ctx.fillStyle = 'rgba(77,226,197,0.55)';
+  ctx.font = `800 12px ${FONT}`;
+  ctx.textAlign = 'center';
+  ctx.fillText('1UP', 88, 452);
+  ctx.fillText('HI-SCORE', 936, 452);
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font = `800 18px ui-monospace, Consolas, monospace`;
+  ctx.fillText('000000', 88, 474);
+  ctx.fillStyle = 'rgba(255,180,84,0.7)';
+  ctx.fillText('999999', 936, 474);
+
+  // Ranuras de monedas en la parte inferior.
+  const slotY = H - 26;
+  for (const cx of [476, 548]) {
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    roundRect(ctx, cx - 12, slotY - 8, 24, 20, 4);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(180,240,255,0.6)';
+    ctx.fillRect(cx - 8, slotY - 4, 16, 3);
+  }
+  ctx.fillStyle = 'rgba(255,215,154,0.8)';
+  ctx.font = `800 12px ${FONT}`;
+  ctx.fillText('25¢', 476, slotY + 16);
+  ctx.fillText('25¢', 548, slotY + 16);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.28)';
   ctx.font = `700 13px ${FONT}`;
   ctx.textAlign = 'center';
-  ctx.fillText('INSERT COIN   ·   3 VIDAS   ·   MUEVE Y DISPARA', 512, H - 18);
+  ctx.fillText('INSERT COIN   ·   3 VIDAS   ·   MUEVE Y DISPARA', 512, H - 12);
 
   const tex = toTexture(canvas);
   const mesh = new THREE.Mesh(
@@ -945,6 +1242,7 @@ export class GamePanel {
       question: 0,
       total: 6,
       tone: '#4de2c5',
+      power: '',
     };
     this.message = { text: '', kind: 'question', tone: null };
     this.key = '';
@@ -1006,7 +1304,7 @@ export class GamePanel {
     const { ctx } = this;
     const W = 1024;
     const H = 150;
-    const { stage, score, lives, question, total, tone } = this.stats;
+    const { stage, score, lives, question, total, tone, power } = this.stats;
     const accent = tone || '#4de2c5';
     const messageTone = this.message.tone || accent;
 
@@ -1040,6 +1338,14 @@ export class GamePanel {
     ctx.fillStyle = messageTone;
     ctx.font = `800 13px ${FONT}`;
     ctx.fillText(tags[this.message.kind] || 'PREGUNTA', 18, 17);
+
+    if (power) {
+      ctx.fillStyle = power.startsWith('P') ? '#7dffcf' : '#ffd479';
+      ctx.textAlign = 'right';
+      ctx.font = `800 14px ui-monospace, Consolas, monospace`;
+      ctx.fillText(`POWER ${power}`, W - 18, 17);
+      ctx.textAlign = 'left';
+    }
 
     // pregunta o resultado
     ctx.fillStyle = '#f2f8fd';

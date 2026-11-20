@@ -20,6 +20,8 @@ import {
   makeBezel,
   makeDangerTexture,
   makePlane,
+  makePowerupTexture,
+  makeScreenFX,
   makeVignetteTexture,
   shared,
 } from './art.js';
@@ -172,6 +174,7 @@ export class Arcade {
     this.bulletLayer = new THREE.Group();
     this.targetLayer = new THREE.Group();
     this.fxLayer = new THREE.Group();
+    this.powerupLayer = new THREE.Group();
 
     /* fondo de mar + carcasa */
     this.sea = new ScrollingWorld({
@@ -182,6 +185,11 @@ export class Arcade {
     this.sea.group.position.set(0, 1.242, -1.79);
     this.group.add(this.sea.group);
     this.group.add(makeBezel());
+
+    // Capa CRT sobre toda la pantalla: scanlines, viñeta y reflejo.
+    const screenFX = makeScreenFX(1.305, 0.86);
+    screenFX.position.set(0, 1.242, -1.32);
+    this.group.add(screenFX);
 
     /* panel de juego dentro de la pantalla */
     this.status = new GamePanel(1.235, 0.181);
@@ -219,7 +227,12 @@ export class Arcade {
     this.damage = 0;
 
     /* nave */
-    this.world.add(this.bulletLayer, this.targetLayer, this.fxLayer);
+    this.world.add(
+      this.bulletLayer,
+      this.targetLayer,
+      this.fxLayer,
+      this.powerupLayer
+    );
     this.group.add(this.world);
 
     this.ship = makePlane('player', 0.19);
@@ -249,6 +262,10 @@ export class Arcade {
     this.cooldown = 0;
     this.bullets = [];
     this.targets = [];
+    this.powerups = [];
+    this.power = null;
+    this.powerTime = 0;
+    this.powerIcon = null;
     this.shake = 0;
     this.bannerFx = null;
 
@@ -319,6 +336,7 @@ export class Arcade {
         : this.qIndex,
       total: this.isMoodle ? this.order.length : this.queue.length,
       tone: this.sector.tone,
+      power: this.power ? `${this.power} · ${Math.ceil(this.powerTime)}s` : '',
     });
   }
 
@@ -350,6 +368,8 @@ export class Arcade {
     this.state = 'intro';
     this.clearTargets();
     this.fx.clear();
+    this.clearPowerups();
+    this.clearPower();
     for (const bullet of this.bullets) {
       this.bulletLayer.remove(bullet.mesh);
       disposeSoft(bullet.mesh);
@@ -461,26 +481,32 @@ export class Arcade {
   fire() {
     if (this.state !== 'playing') return;
     if (this.cooldown > 0) return;
-    this.cooldown = FIRE_COOLDOWN;
 
-    const bullet = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.034, 0.12),
-      new THREE.MeshBasicMaterial({
-        map: shared.glow(),
-        color: 0xffe9a3,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        toneMapped: false,
-      })
-    );
-    bullet.position.set(this.ship.position.x, SHIP_Y + 0.1, BULLET_Z);
-    this.bulletLayer.add(bullet);
-    this.bullets.push({
-      mesh: bullet,
-      x: bullet.position.x,
-      y: bullet.position.y,
-    });
+    const rapid = this.power === 'R';
+    const dual = this.power === 'P';
+    this.cooldown = rapid ? FIRE_COOLDOWN * 0.5 : FIRE_COOLDOWN;
+
+    const offsets = dual ? [-0.055, 0.055] : [0];
+    for (const offset of offsets) {
+      const bullet = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.034, 0.12),
+        new THREE.MeshBasicMaterial({
+          map: shared.glow(),
+          color: dual ? 0x7dffcf : 0xffe9a3,
+          transparent: true,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          toneMapped: false,
+        })
+      );
+      bullet.position.set(this.ship.position.x + offset, SHIP_Y + 0.1, BULLET_Z);
+      this.bulletLayer.add(bullet);
+      this.bullets.push({
+        mesh: bullet,
+        x: bullet.position.x,
+        y: bullet.position.y,
+      });
+    }
 
     // fogonazo
     const flash = new THREE.Sprite(
@@ -492,12 +518,122 @@ export class Arcade {
         toneMapped: false,
       })
     );
-    flash.scale.setScalar(0.05);
+    flash.scale.setScalar(dual ? 0.07 : 0.05);
     flash.position.set(this.ship.position.x, SHIP_Y + 0.11, BULLET_Z + 0.01);
     this.fx.add(flash, { life: 0.09, scale0: 1, scale1: 1.8, opacity0: 1, opacity1: 0 });
 
     this.ship.position.y = SHIP_Y - 0.006;
     sfx.shot();
+  }
+
+  /* ------------------------------------------------------------ power-ups */
+
+  spawnPowerup(x, y) {
+    const letter = Math.random() < 0.6 ? 'P' : 'R';
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.075, 0.094),
+      new THREE.MeshBasicMaterial({
+        map: makePowerupTexture(letter),
+        transparent: true,
+        depthWrite: false,
+        toneMapped: false,
+      })
+    );
+    mesh.position.set(x, y, TARGET_Z + 0.02);
+    this.powerupLayer.add(mesh);
+    this.powerups.push({
+      mesh,
+      letter,
+      x,
+      y,
+      speed: 0.2 + this.sectorPos * 0.01,
+      phase: Math.random() * Math.PI * 2,
+    });
+  }
+
+  clearPowerups() {
+    for (const item of this.powerups) {
+      this.powerupLayer.remove(item.mesh);
+      item.mesh.geometry.dispose();
+      item.mesh.material.dispose();
+    }
+    this.powerups.length = 0;
+  }
+
+  clearPower() {
+    this.power = null;
+    this.powerTime = 0;
+    if (this.powerIcon) {
+      this.world.remove(this.powerIcon);
+      disposeObject(this.powerIcon);
+      this.powerIcon = null;
+    }
+  }
+
+  collectPowerup(item) {
+    this.power = item.letter;
+    this.powerTime = 12;
+    this.score += 50;
+    this.shake = Math.max(this.shake, 0.04);
+    sfx.ok();
+    this.popText(
+      `+50 ${item.letter === 'P' ? 'DUAL CANNON' : 'RAPID FIRE'}`,
+      item.x,
+      item.y + 0.06,
+      item.letter === 'P' ? '#7dffcf' : '#ffd479',
+      0.021
+    );
+
+    if (this.powerIcon) {
+      this.world.remove(this.powerIcon);
+      disposeObject(this.powerIcon);
+    }
+    this.powerIcon = makeText(item.letter, {
+      height: 0.032,
+      weight: 800,
+      color: item.letter === 'P' ? '#7dffcf' : '#ffd479',
+      bg: 'rgba(8,16,26,0.8)',
+      pad: 12,
+    });
+    this.world.add(this.powerIcon);
+    this.refreshStatus();
+  }
+
+  updatePowerups(dt, t) {
+    if (this.power) {
+      this.powerTime -= dt;
+      if (this.powerTime <= 0) {
+        this.clearPower();
+        this.refreshStatus();
+      } else if (this.powerIcon) {
+        this.powerIcon.position.set(this.ship.position.x, SHIP_Y + 0.14, SHIP_Z + 0.02);
+        this.powerIcon.material.opacity = Math.min(1, this.powerTime / 1.5);
+      }
+    }
+
+    for (let i = this.powerups.length - 1; i >= 0; i--) {
+      const item = this.powerups[i];
+      item.y -= item.speed * dt;
+      item.mesh.position.y = item.y;
+      item.mesh.rotation.z = Math.sin(t * 5 + item.phase) * 0.1;
+      item.mesh.scale.x = 1 + Math.sin(t * 7 + item.phase) * 0.08;
+
+      const caught =
+        this.state === 'playing' &&
+        Math.abs(item.x - this.ship.position.x) < 0.12 &&
+        Math.abs(item.y - SHIP_Y) < 0.1;
+
+      if (caught) {
+        this.collectPowerup(item);
+      }
+
+      if (caught || item.y < LINE_Y - 0.08) {
+        this.powerupLayer.remove(item.mesh);
+        item.mesh.geometry.dispose();
+        item.mesh.material.dispose();
+        this.powerups.splice(i, 1);
+      }
+    }
   }
 
   pointerMove(nx) {
@@ -589,6 +725,9 @@ export class Arcade {
           0.02
         );
       }
+
+      // Los derribos correctos sueltan cápsulas de potenciación estilo 1942.
+      if (Math.random() < 0.45) this.spawnPowerup(target.x, target.y);
 
       this.showResultMessage(
         'ok',
@@ -691,6 +830,8 @@ export class Arcade {
     this.firing = false;
     this.clearTargets();
     this.fx.clear();
+    this.clearPowerups();
+    this.clearPower();
     this.api.submitScore(this.score, this.isMoodle ? 0 : this.sectorsDone);
     this.showResultMessage('err', t('downMessage', { score: this.score }));
     this.showResult(false);
@@ -701,6 +842,8 @@ export class Arcade {
     this.firing = false;
     this.clearTargets();
     this.fx.clear();
+    this.clearPowerups();
+    this.clearPower();
     this.api.submitScore(this.score, this.isMoodle ? 0 : this.sectorsDone);
     this.showResultMessage(
       'ok',
@@ -1046,6 +1189,7 @@ export class Arcade {
     this.cooldown = Math.max(0, this.cooldown - dt);
     this.sea.update(dt);
     this.fx.update(dt);
+    this.updatePowerups(dt, t);
 
     // nave
     const shipX = this.ship.position.x;

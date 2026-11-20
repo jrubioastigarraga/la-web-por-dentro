@@ -77,6 +77,22 @@ Cada sector tiene **10 preguntas** en su banco, con **4 opciones** cada una. En 
 - **Practicar un sector:** una partida corta de una sola asignatura, ideal para repasar en clase.
 - **Arcade clásico:** la versión de recreativa 2D con ratón, pantalla holográfica y **preguntas desde Moodle**, disponible en [`arcade-clasico.html`](./arcade-clasico.html).
 
+## Arcade clásico
+
+[](#arcade-clásico)
+
+La versión de recreativa (`arcade-clasico.html`) mantiene la mecánica original y se ha renovado con una estética más cercana a **Air Force / 1942 / 1945**:
+
+- Máquina arcade con marquesina iluminada, ranuras de monedas, marcadores `1UP`/`HI-SCORE`, remaches y máscara **CRT** (scanlines, viñeta y reflejo de cristal).
+- Océano con más capas de espuma, franjas de luz y chispas; islas con palmeras dibujadas y nubes con sombreado.
+- Aviones redibujados con nervaduras, escarapela, número de escuadrón, cabina brillante y morro metálico.
+- Línea de defensa con chevrones parpadeantes y explosiones con más humo y metralla.
+- **Power-ups**: al derribar la respuesta correcta pueden caer cápsulas `P` (cañones dobles) y `R` (recarga rápida) durante 12 segundos. Se recogen moviendo el avión y suman 50 puntos.
+
+![Partida del arcade clásico](./docs/arcade-game.png)
+
+![Menú del arcade clásico](./docs/arcade-menu.png)
+
 ## Idioma
 
 [](#idioma)
