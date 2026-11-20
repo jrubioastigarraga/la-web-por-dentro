@@ -64,15 +64,18 @@ const STRINGS = {
     moodleTitle: 'Preguntas de Moodle',
     moodleApi: 'API (proxy)',
     moodleApiHint:
-      'Si usas la API de Python, pon aquí su URL. Tiene prioridad sobre el servidor.',
+      'URL de la API (por ejemplo http://172.16.35.2/escuadron-api).',
     moodleServer: 'Servidor',
     moodleKey: 'Clave de acceso',
-    moodleQuiz: 'Cuestionario (cmid, nombre o course:ID)',
+    moodleQuiz: 'Cuestionario',
     moodleQuizHint:
-      'Con la API de Moodle: course:3 para todo un curso o quiz:15 para un cuestionario. También acepta el nombre de un cuestionario importado. Si lo dejas vacío y solo hay uno, se usará ese.',
+      'quiz:39 para un cuestionario o course:51 para todo un curso. Si lo dejas vacío y solo hay uno, se usará ese.',
     moodleIds: 'IDs de preguntas',
     moodleIdsHint:
       'Solo si no usas el ID del cuestionario. Sepáralos por comas.',
+    moodleSave: 'Guardar',
+    moodleSaved: 'Configuración guardada.',
+    moodleNeedApi: 'Escribe la URL de la API.',
     moodlePlay: 'Cargar y jugar',
     moodleTest: 'Probar',
     moodleClose: 'Cerrar',
@@ -151,15 +154,18 @@ const STRINGS = {
     moodleTitle: 'Moodleko galderak',
     moodleApi: 'APIa (proxy)',
     moodleApiHint:
-      'Python APIa erabiltzen baduzu, jarri hemen bere URLa. Zerbitzariaren gainetik lehentasuna du.',
+      'APIaren URLa (adibidez http://172.16.35.2/escuadron-api).',
     moodleServer: 'Zerbitzaria',
     moodleKey: 'Sarbide-gakoa',
-    moodleQuiz: 'Galdetegia (cmid, izena edo course:ID)',
+    moodleQuiz: 'Galdetegia',
     moodleQuizHint:
-      'Moodle APIarekin: course:3 ikastaro osoa lortzeko edo quiz:15 galdetegi bat lortzeko. Inportatutako galdetegi baten izena ere onartzen du. Hutsik uzten baduzu eta bakarra badago, hura erabiliko da.',
+      'quiz:39 galdetegi bat lortzeko edo course:51 ikastaro osorako. Hutsik uzten baduzu eta bakarra badago, hura erabiliko da.',
     moodleIds: 'Galderen IDak',
     moodleIdsHint:
       'Soilik galdetegiaren IDa erabiltzen ez baduzu. Banatu komaz.',
+    moodleSave: 'Gorde',
+    moodleSaved: 'Konfigurazioa gordeta.',
+    moodleNeedApi: 'Idatzi APIaren URLa.',
     moodlePlay: 'Kargatu eta jolastu',
     moodleTest: 'Probatu',
     moodleClose: 'Itxi',
@@ -259,12 +265,9 @@ export function applyStaticText() {
   set('moodle-title', t('moodleTitle'));
   set('moodle-api-label', t('moodleApi'));
   set('moodle-api-hint', t('moodleApiHint'));
-  set('moodle-url-label', t('moodleServer'));
-  set('moodle-key-label', t('moodleKey'));
   set('moodle-quiz-label', t('moodleQuiz'));
   set('moodle-quiz-hint', t('moodleQuizHint'));
-  set('moodle-ids-label', t('moodleIds'));
-  set('moodle-help', t('moodleIdsHint'));
+  set('moodle-save', t('moodleSave'));
   set('moodle-play', t('moodlePlay'));
   set('moodle-test', t('moodleTest'));
   set('moodle-close', t('moodleClose'));

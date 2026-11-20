@@ -176,24 +176,21 @@ docker run -p 8000:8000 --env-file api/.env escuadron-api
 
 ## Conectar el juego
 
-En la pantalla inicial, pulsa **Moodle** y rellena:
+En la pantalla inicial, pulsa **Moodle** y rellena solo:
 
 - **API (proxy)**: la URL de esta API, por ejemplo
-  `https://escuadron-api.onrender.com`
-- **Cuestionario (cmid)**: `1234`, o vacío si solo hay uno permitido.
-- **Clave de acceso**: solo si has definido `API_KEY`.
+  `http://172.16.35.2/escuadron-api`
+- **Cuestionario**: `quiz:39` para un quiz o `course:51` para todos los quizzes
+  de un curso. Si lo dejas vacío y solo hay uno, se usa ese.
 
-También por enlace:
-
-```
-https://jrubioastigarraga.github.io/la-web-por-dentro/?api=https://escuadron-api.onrender.com&quiz=1234&start=1
-```
-
-Si la API tiene `API_KEY`:
+Pulsa **Guardar** para conservarlo o **Cargar y jugar** para empezar. También
+por enlace:
 
 ```
-...&start=1#key=TU_API_KEY
+http://172.16.35.2/la-web-por-dentro/?api=http://172.16.35.2/escuadron-api&quiz=quiz:39&start=1
 ```
+
+`API_KEY` existe para clientes propios, pero el juego no la pide.
 
 ## Seguridad
 

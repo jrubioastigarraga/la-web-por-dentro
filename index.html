@@ -43,49 +43,26 @@
           inputmode="url"
           autocomplete="off"
           spellcheck="false"
-          placeholder="https://mi-api.onrender.com"
+          placeholder="http://172.16.35.2/escuadron-api"
         />
         <p class="help" id="moodle-api-hint">
-          Si usas la API de Python, pon aquí su URL. Tiene prioridad sobre el servidor.
+          URL de la API (por ejemplo http://172.16.35.2/escuadron-api).
         </p>
-        <label for="moodle-url" id="moodle-url-label">Servidor</label>
-        <input
-          id="moodle-url"
-          type="url"
-          inputmode="url"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="https://moodle.lhusurbil.eus"
-        />
-        <label for="moodle-key" id="moodle-key-label">Clave de acceso</label>
-        <input id="moodle-key" type="text" autocomplete="off" spellcheck="false" />
-        <label for="moodle-quiz" id="moodle-quiz-label">Cuestionario (cmid)</label>
+        <label for="moodle-quiz" id="moodle-quiz-label">Cuestionario</label>
         <input
           id="moodle-quiz"
           type="text"
-          inputmode="numeric"
           autocomplete="off"
           spellcheck="false"
-          placeholder="1234"
+          placeholder="quiz:39 o course:51"
         />
         <p class="help" id="moodle-quiz-hint">
-          ID del cuestionario en Moodle (mod/quiz/view.php?id=...). Si lo pones, se cargan todas sus preguntas.
-        </p>
-        <label for="moodle-ids" id="moodle-ids-label">IDs de preguntas</label>
-        <textarea
-          id="moodle-ids"
-          rows="2"
-          inputmode="numeric"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="101, 102, 103"
-        ></textarea>
-        <p class="help" id="moodle-help">
-          Sepáralos por comas. Se usarán como preguntas de la partida.
+          quiz:39 para un cuestionario o course:51 para todo un curso.
         </p>
         <p class="status" id="moodle-status" role="status"></p>
         <div class="modal-actions">
           <button class="ui" type="button" id="moodle-local">Jugar con banco local</button>
+          <button class="ui" type="button" id="moodle-save">Guardar</button>
           <button class="ui" type="button" id="moodle-test">Probar</button>
           <button class="ui primary" type="submit" id="moodle-play">Cargar y jugar</button>
           <button class="ui" type="button" id="moodle-close">Cerrar</button>

@@ -417,10 +417,7 @@ document.getElementById('langs')?.addEventListener('click', (event) => {
 const modal = document.getElementById('moodle-modal');
 const moodleStatus = document.getElementById('moodle-status');
 const apiInput = document.getElementById('moodle-api');
-const urlInput = document.getElementById('moodle-url');
-const keyInput = document.getElementById('moodle-key');
 const quizInput = document.getElementById('moodle-quiz');
-const idsInput = document.getElementById('moodle-ids');
 
 function setMoodleStatus(text, kind = '') {
   if (!moodleStatus) return;
@@ -430,11 +427,8 @@ function setMoodleStatus(text, kind = '') {
 
 function openMoodle() {
   const config = loadMoodleConfig();
-  if (urlInput) urlInput.value = config.base;
   if (apiInput) apiInput.value = config.api;
-  if (keyInput) keyInput.value = config.key;
   if (quizInput) quizInput.value = config.quiz;
-  if (idsInput) idsInput.value = config.ids;
   setMoodleStatus('');
   if (modal) modal.hidden = false;
   setTimeout(() => (apiInput?.value ? quizInput : apiInput)?.focus(), 60);
@@ -470,12 +464,14 @@ function startMoodleGame(questions) {
 
 async function runMoodle(play) {
   const config = saveMoodleConfig({
-    base: urlInput?.value,
     api: apiInput?.value,
-    key: keyInput?.value,
     quiz: quizInput?.value,
-    ids: idsInput?.value,
   });
+
+  if (!config.api) {
+    setMoodleStatus(t('moodleNeedApi'), 'error');
+    return;
+  }
 
   setMoodleStatus(t('moodleLoading'));
   try {
@@ -487,6 +483,18 @@ async function runMoodle(play) {
     console.error(error);
     setMoodleStatus(`${t('moodleError')} (${error.message})`, 'error');
   }
+}
+
+function saveMoodleOnly() {
+  const config = saveMoodleConfig({
+    api: apiInput?.value,
+    quiz: quizInput?.value,
+  });
+  if (!config.api) {
+    setMoodleStatus(t('moodleNeedApi'), 'error');
+    return;
+  }
+  setMoodleStatus(t('moodleSaved'), 'ok');
 }
 
 /**
@@ -518,6 +526,11 @@ document.getElementById('btn-moodle')?.addEventListener('click', () => {
 });
 
 document.getElementById('moodle-close')?.addEventListener('click', closeMoodle);
+
+document.getElementById('moodle-save')?.addEventListener('click', () => {
+  initAudio();
+  saveMoodleOnly();
+});
 
 document.getElementById('moodle-test')?.addEventListener('click', () => {
   runMoodle(false);
@@ -724,35 +737,17 @@ window.__arcade = {
 };
 
 /**
- * Permite configurar Moodle por enlace, útil en Pico 4:
- *   ?ids=101,102&server=https://moodle...&start=1
- * La clave se puede pasar en el hash (#key=...) para que no viaje al servidor;
- * se borra de la barra de direcciones después de guardarla.
+ * Permite configurar la API por enlace, útil en Pico 4:
+ *   ?api=http://172.16.35.2/escuadron-api&quiz=quiz:39&start=1
  */
 function applyUrlConfig() {
   const params = new URLSearchParams(window.location.search);
-  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
   const config = loadMoodleConfig();
   let changed = false;
 
-  const server = params.get('server') || params.get('moodle');
-  if (server) {
-    config.base = server;
-    changed = true;
-  }
   const api = params.get('api');
   if (api) {
     config.api = api;
-    changed = true;
-  }
-  const key = params.get('key') || hash.get('key');
-  if (key) {
-    config.key = key;
-    changed = true;
-  }
-  const ids = params.get('ids');
-  if (ids) {
-    config.ids = ids;
     changed = true;
   }
   const quiz = params.get('quiz');

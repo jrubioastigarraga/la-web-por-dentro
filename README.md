@@ -69,11 +69,12 @@ Juego (HTTP)  ->  API Python  ->  Moodle (format_quizdump)
 - API: **http://172.16.35.2/escuadron-api**
 - Plugin: `format_quizdump` (ZIP parcheado en [`moodle/format_quizdump.zip`](/jrubioastigarraga/la-web-por-dentro/raw/main/moodle/format_quizdump.zip))
 
-En la pantalla inicial, pulsa **Moodle** y rellena:
+En la pantalla inicial, pulsa **Moodle** y rellena solo:
 
 - **API (proxy)**: `http://172.16.35.2/escuadron-api`
 - **Cuestionario**: `quiz:39` para un cuestionario o `course:51` para todos los quizzes de un curso.
-- **Clave de acceso**: solo si configuras `API_KEY` en la API.
+
+Pulsa **Guardar** para conservarlo o **Cargar y jugar** para empezar.
 
 También por enlace, cómodo en Pico 4:
 
