@@ -5,7 +5,7 @@ La APK es un **lanzador**: abre el juego en el navegador del Pico con
 Android **no soporta sesiones inmersivas WebXR**.
 
 - URL del juego: la de `app/src/main/res/values/strings.xml` →
-  `http://172.16.35.2/la-web-por-dentro/`
+  `https://jrubioastigarraga.github.io/la-web-por-dentro/`
 - Si el Pico no tiene navegador, la app muestra el juego en un WebView 2D de
   respaldo.
 
@@ -53,7 +53,7 @@ android/app/build/outputs/apk/debug/app-debug.apk
 Edita `app/src/main/res/values/strings.xml`:
 
 ```xml
-<string name="game_url">http://172.16.35.2/la-web-por-dentro/</string>
+<string name="game_url">https://jrubioastigarraga.github.io/la-web-por-dentro/</string>
 ```
 
 y vuelve a compilar. La URL debe ser HTTP o HTTPS y accesible desde la red del

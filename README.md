@@ -183,10 +183,12 @@ Es un **lanzador**: abre el juego en el navegador del Pico, que es el que ofrece
 
    o copia el APK al Pico y ábrelo.
 3. Abre **Escuadrón Web** → se abre el navegador con
-   `http://172.16.35.2/la-web-por-dentro/` → pulsa **Enter VR**.
+   `https://jrubioastigarraga.github.io/la-web-por-dentro/` → pulsa **Enter VR**.
 
-La URL se cambia en `android/app/src/main/res/values/strings.xml`. El Pico debe
-estar en la red de la escuela para llegar a `172.16.35.2`.
+La URL se cambia en `android/app/src/main/res/values/strings.xml`. Por defecto
+apunta a la demo pública de GitHub Pages, así que funciona fuera de la red del
+instituto. Para usar la copia local con Moodle, cámbiala por
+`http://172.16.35.2/la-web-por-dentro/` y vuelve a compilar la APK.
 
 ## Desarrollo
 
