@@ -116,7 +116,7 @@ Juego (HTTP)  ->  API Python  ->  Moodle (format_quizdump)
 En la pantalla inicial del arcade clásico, pulsa **Moodle** y rellena solo:
 
 - **API (proxy)**: `http://172.16.35.2/escuadron-api`
-- **Cuestionario**: `quiz:39` para un cuestionario o `course:51` para todos los quizzes de un curso.
+- **Cuestionario**: `quiz:39` (ID del quiz), `course:51` (todos los quizzes de un curso) o `cmid:7772` (el número que aparece en la URL de Moodle `mod/quiz/edit.php?cmid=7772`).
 
 Pulsa **Guardar** para conservarlo o **Cargar y jugar** para empezar.
 
@@ -125,6 +125,14 @@ También por enlace, cómodo en Pico 4:
 ```
 http://172.16.35.2/la-web-por-dentro/arcade-clasico.html?api=http://172.16.35.2/escuadron-api&quiz=quiz:39&start=1
 ```
+
+Para el quiz de `https://moodle.lhusurbil.eus/mod/quiz/edit.php?cmid=7772`:
+
+```
+http://172.16.35.2/la-web-por-dentro/arcade-clasico.html?api=http://172.16.35.2/escuadron-api&cmid=7772&start=1
+```
+
+Esto hace la llamada `GET /questions?quiz=cmid:7772`, que la API resuelve con el plugin `local_lwpd` (que trabaja con cmids). El administrador de Moodle debe tener `7772` en la configuración `quizids` (o `allowedids`) de ese plugin; si no, devolverá `quiz-not-allowed`.
 
 Cada pregunta se convierte en **una pantalla (`STAGE`) independiente**.
 

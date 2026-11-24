@@ -69,7 +69,7 @@ const STRINGS = {
     moodleKey: 'Clave de acceso',
     moodleQuiz: 'Cuestionario',
     moodleQuizHint:
-      'quiz:39 para un cuestionario o course:51 para todo un curso. Si lo dejas vacío y solo hay uno, se usará ese.',
+      'quiz:39 (ID), course:51 (curso) o cmid:7772 (el número de /mod/quiz/edit.php?cmid=...). Si lo dejas vacío y solo hay uno, se usará ese.',
     moodleIds: 'IDs de preguntas',
     moodleIdsHint:
       'Solo si no usas el ID del cuestionario. Sepáralos por comas.',
@@ -159,7 +159,7 @@ const STRINGS = {
     moodleKey: 'Sarbide-gakoa',
     moodleQuiz: 'Galdetegia',
     moodleQuizHint:
-      'quiz:39 galdetegi bat lortzeko edo course:51 ikastaro osorako. Hutsik uzten baduzu eta bakarra badago, hura erabiliko da.',
+      'quiz:39 (ID), course:51 (ikastaroa) edo cmid:7772 (/mod/quiz/edit.php?cmid=... zenbakia). Hutsik uzten baduzu eta bakarra badago, hura erabiliko da.',
     moodleIds: 'Galderen IDak',
     moodleIdsHint:
       'Soilik galdetegiaren IDa erabiltzen ez baduzu. Banatu komaz.',

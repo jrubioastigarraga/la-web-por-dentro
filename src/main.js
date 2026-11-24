@@ -739,6 +739,7 @@ window.__arcade = {
 /**
  * Permite configurar la API por enlace, útil en Pico 4:
  *   ?api=http://172.16.35.2/escuadron-api&quiz=quiz:39&start=1
+ *   ?api=http://172.16.35.2/escuadron-api&cmid=7772&start=1
  */
 function applyUrlConfig() {
   const params = new URLSearchParams(window.location.search);
@@ -753,6 +754,11 @@ function applyUrlConfig() {
   const quiz = params.get('quiz');
   if (quiz) {
     config.quiz = quiz;
+    changed = true;
+  }
+  const cmid = params.get('cmid');
+  if (cmid) {
+    config.quiz = `cmid:${cmid}`;
     changed = true;
   }
   if (changed) saveMoodleConfig(config);

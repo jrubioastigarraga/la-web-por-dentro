@@ -360,6 +360,7 @@ async def questions(
 
     courseid = (request.query_params.get("courseid") or "").strip()
     quizid = (request.query_params.get("quizid") or "").strip()
+    cmid = (request.query_params.get("cmid") or "").strip()
 
     if quiz.startswith("course:"):
         courseid = quiz[7:].strip()
@@ -367,13 +368,64 @@ async def questions(
     elif quiz.startswith("quiz:"):
         quizid = quiz[5:].strip()
         quiz = ""
+    elif quiz.startswith("cmid:"):
+        cmid = quiz[5:].strip()
+        quiz = ""
 
     if courseid and not courseid.isdigit():
         raise HTTPException(status_code=400, detail="Invalid courseid")
     if quizid and not quizid.isdigit():
         raise HTTPException(status_code=400, detail="Invalid quizid")
+    if cmid and not cmid.isdigit():
+        raise HTTPException(status_code=400, detail="Invalid cmid")
 
     local = _load_local()
+
+    # 0) cmid de Moodle (el de /mod/quiz/edit.php?cmid=...): lo resuelve
+    #    directamente el plugin local_lwpd, que trabaja con cmids.
+    if not ids and cmid:
+        if not MOODLE_URL:
+            raise HTTPException(status_code=503, detail="Moodle no configurado")
+        cache_key = f"cmid:{cmid}"
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return JSONResponse(cached, headers={"X-Cache": "HIT"})
+
+        headers = {}
+        if MOODLE_KEY:
+            headers["X-LWPD-Key"] = MOODLE_KEY
+        url = f"{MOODLE_URL}/local/lwpd/vrquestions.php"
+        try:
+            async with httpx.AsyncClient(timeout=MOODLE_TIMEOUT) as client:
+                response = await client.get(
+                    url, params={"quiz": cmid}, headers=headers
+                )
+        except httpx.HTTPError as error:
+            raise HTTPException(
+                status_code=502,
+                detail=f"No se pudo contactar con Moodle: {error.__class__.__name__}",
+            ) from error
+
+        if response.status_code != 200:
+            detail = response.text[:180]
+            try:
+                detail = (response.json().get("error") or detail)[:180]
+            except ValueError:
+                pass
+            raise HTTPException(status_code=502, detail=f"Moodle HTTP {response.status_code}: {detail}")
+
+        try:
+            payload = {"questions": response.json().get("questions") or []}
+        except ValueError as error:
+            raise HTTPException(status_code=502, detail="Moodle no devolvió JSON") from error
+
+        if not payload["questions"]:
+            raise HTTPException(
+                status_code=404,
+                detail="El cmid no tiene preguntas o no está permitido en local_lwpd",
+            )
+        _cache_set(cache_key, payload)
+        return JSONResponse(payload, headers={"X-Source": "lwpd", "X-Cmid": cmid})
 
     # 1) Cuestionario importado desde Moodle XML.
     if not ids:
