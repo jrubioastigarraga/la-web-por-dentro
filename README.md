@@ -132,7 +132,7 @@ Para el quiz de `https://moodle.lhusurbil.eus/mod/quiz/edit.php?cmid=7772`:
 http://172.16.35.2/la-web-por-dentro/arcade-clasico.html?api=http://172.16.35.2/escuadron-api&cmid=7772&start=1
 ```
 
-Esto hace la llamada `GET /questions?quiz=cmid:7772`, que la API resuelve con el plugin `local_lwpd` (que trabaja con cmids). El administrador de Moodle debe tener `7772` en la configuración `quizids` (o `allowedids`) de ese plugin; si no, devolverá `quiz-not-allowed`.
+Esto hace la llamada `GET /questions?quiz=cmid:7772`. La API resuelve el cmid contra `format_quizdump` (para este quiz: **quiz id 104, curso 83**) y guarda la correspondencia en `api/data/cmid-map.json`. Si el cmid no está en caché, recorre los cursos `1..MOODLE_MAX_COURSEID` (150 por defecto); la primera resolución puede tardar unos segundos y las siguientes son instantáneas. También puedes usar directamente `quiz:104`.
 
 Cada pregunta se convierte en **una pantalla (`STAGE`) independiente**.
 

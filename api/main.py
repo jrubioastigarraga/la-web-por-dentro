@@ -57,6 +57,8 @@ DATA_DIR = os.getenv(
 )
 CACHE_TTL = max(0, int(os.getenv("CACHE_TTL", "300")))
 MOODLE_TIMEOUT = float(os.getenv("MOODLE_TIMEOUT", "15"))
+MAX_COURSE_ID = max(1, int(os.getenv("MOODLE_MAX_COURSEID", "150")))
+CMID_MAP_FILE = os.path.join(DATA_DIR, "cmid-map.json")
 
 RATE_LIMIT = int(os.getenv("RATE_LIMIT", "120"))
 RATE_WINDOW = 60
@@ -152,6 +154,69 @@ async def _moodle_ws(function: str, params: dict[str, Any]) -> Any:
             detail=f"{payload.get('errorcode')}: {payload.get('message')}",
         )
     return payload
+
+
+def _load_cmid_map() -> dict[str, int]:
+    try:
+        with open(CMID_MAP_FILE, "r", encoding="utf-8") as file:
+            raw = json.load(file)
+        return {str(key): int(value) for key, value in raw.items()}
+    except (OSError, ValueError, TypeError):
+        return {}
+
+
+def _save_cmid_map(mapping: dict[str, int]) -> None:
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(CMID_MAP_FILE, "w", encoding="utf-8") as file:
+            json.dump(mapping, file, ensure_ascii=False, indent=2)
+    except OSError:
+        pass
+
+
+async def _resolve_cmid(cmid: str) -> int:
+    """Convierte un cmid de Moodle en el id interno del quiz.
+
+    El token de la API solo tiene permiso para las funciones de
+    format_quizdump, así que no podemos usar core_course_get_contents.
+    Primero probamos si el cmid coincide con un quizid (rápido); si no,
+    recorremos los cursos visibles y guardamos la correspondencia en
+    data/cmid-map.json para no repetir el escaneo.
+    """
+    mapping = _load_cmid_map()
+    if cmid in mapping:
+        return mapping[cmid]
+
+    # Atajo: a veces el cmid y el quizid coinciden.
+    try:
+        payload = await _moodle_ws(
+            "format_quizdump_get_quiz_questions", {"quizid": int(cmid)}
+        )
+        quiz = payload.get("quiz") or {}
+        if int(quiz.get("cmid") or 0) == int(cmid):
+            mapping[cmid] = int(quiz.get("id"))
+            _save_cmid_map(mapping)
+            return mapping[cmid]
+    except HTTPException:
+        pass
+
+    for courseid in range(1, MAX_COURSE_ID + 1):
+        try:
+            payload = await _moodle_ws(
+                "format_quizdump_get_quizzes", {"courseid": courseid}
+            )
+        except HTTPException:
+            continue
+        for quiz in payload.get("quizzes") or []:
+            if int(quiz.get("cmid") or 0) == int(cmid):
+                mapping[cmid] = int(quiz.get("id"))
+                _save_cmid_map(mapping)
+                return mapping[cmid]
+
+    raise HTTPException(
+        status_code=404,
+        detail=f"No se encontró el cmid {cmid} en los cursos 1..{MAX_COURSE_ID}",
+    )
 
 
 def _map_quizdump_questions(questions: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -381,51 +446,34 @@ async def questions(
 
     local = _load_local()
 
-    # 0) cmid de Moodle (el de /mod/quiz/edit.php?cmid=...): lo resuelve
-    #    directamente el plugin local_lwpd, que trabaja con cmids.
+    # 0) cmid de Moodle (el de /mod/quiz/edit.php?cmid=...). Se resuelve
+    #    contra format_quizdump y se cachea en data/cmid-map.json.
     if not ids and cmid:
-        if not MOODLE_URL:
-            raise HTTPException(status_code=503, detail="Moodle no configurado")
+        if not MOODLE_URL or not MOODLE_TOKEN:
+            raise HTTPException(status_code=503, detail="Moodle token no configurado")
         cache_key = f"cmid:{cmid}"
         cached = _cache_get(cache_key)
         if cached is not None:
             return JSONResponse(cached, headers={"X-Cache": "HIT"})
 
-        headers = {}
-        if MOODLE_KEY:
-            headers["X-LWPD-Key"] = MOODLE_KEY
-        url = f"{MOODLE_URL}/local/lwpd/vrquestions.php"
-        try:
-            async with httpx.AsyncClient(timeout=MOODLE_TIMEOUT) as client:
-                response = await client.get(
-                    url, params={"quiz": cmid}, headers=headers
-                )
-        except httpx.HTTPError as error:
-            raise HTTPException(
-                status_code=502,
-                detail=f"No se pudo contactar con Moodle: {error.__class__.__name__}",
-            ) from error
-
-        if response.status_code != 200:
-            detail = response.text[:180]
-            try:
-                detail = (response.json().get("error") or detail)[:180]
-            except ValueError:
-                pass
-            raise HTTPException(status_code=502, detail=f"Moodle HTTP {response.status_code}: {detail}")
-
-        try:
-            payload = {"questions": response.json().get("questions") or []}
-        except ValueError as error:
-            raise HTTPException(status_code=502, detail="Moodle no devolvió JSON") from error
-
-        if not payload["questions"]:
+        resolved_quizid = await _resolve_cmid(cmid)
+        questions = await _quizdump_questions("", str(resolved_quizid))
+        if not questions:
             raise HTTPException(
                 status_code=404,
-                detail="El cmid no tiene preguntas o no está permitido en local_lwpd",
+                detail="El quiz no tiene preguntas multichoice/truefalse utilizables",
             )
+
+        payload = {"questions": questions}
         _cache_set(cache_key, payload)
-        return JSONResponse(payload, headers={"X-Source": "lwpd", "X-Cmid": cmid})
+        return JSONResponse(
+            payload,
+            headers={
+                "X-Source": "quizdump",
+                "X-Cmid": cmid,
+                "X-Quiz-Id": str(resolved_quizid),
+            },
+        )
 
     # 1) Cuestionario importado desde Moodle XML.
     if not ids:
