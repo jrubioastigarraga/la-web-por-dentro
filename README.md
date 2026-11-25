@@ -195,8 +195,15 @@ No es el que está desplegado; la vía actual es `format_quizdump` + API.
 
 La APK está en [`android/EscuadronWeb.apk`](./android/EscuadronWeb.apk).
 
-Es un **lanzador**: abre el juego en el navegador del Pico, que es el que ofrece
-**WebXR real**. Un WebView de Android no soporta sesiones inmersivas.
+Es **autocontenida**: el juego completo (portada, cabina FPV, arcade clásico,
+Three.js y modelos GLB) viaja dentro de la APK. Al abrirla arranca un servidor
+HTTP local y abre el navegador del Pico en `http://127.0.0.1:PUERTO/index.html`.
+El navegador es el que ofrece **WebXR real**; un WebView de Android no soporta
+sesiones inmersivas.
+
+- No necesita el servidor del instituto para la campaña ni para el arcade.
+- **Moodle** sí necesita red para llegar a `http://172.16.35.2/escuadron-api`.
+- El servidor local corre en un **servicio en primer plano** mientras juegas.
 
 1. Activa el **modo desarrollador** del Pico y permite orígenes desconocidos.
 2. Instálala por USB:
@@ -206,13 +213,11 @@ Es un **lanzador**: abre el juego en el navegador del Pico, que es el que ofrece
    ```
 
    o copia el APK al Pico y ábrelo.
-3. Abre **Escuadrón Web** → se abre el navegador con la portada →
+3. Abre **Escuadrón Web** → se abre el navegador en la copia local →
    elige **Cabina FPV** → pulsa **Enter VR**.
 
-La URL se cambia en `android/app/src/main/res/values/strings.xml`. Por defecto
-apunta a la demo pública de GitHub Pages, así que funciona fuera de la red del
-instituto. Para usar la copia local con Moodle, cámbiala por
-`http://172.16.35.2/la-web-por-dentro/` y vuelve a compilar la APK.
+Para recompilarla: `npm run build`, `npm run apk:assets` y después
+`gradle assembleDebug` en `android/`.
 
 ## Desarrollo
 
