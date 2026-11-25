@@ -1,23 +1,33 @@
-# Escuadrón Web · Cabina WebXR
+# Escuadrón Web · Arcade DAW
 
-[](#escuadrón-web--cabina-webxr)
+[](#escuadrón-web--arcade-daw)
 
 Arcade educativo de **combate aéreo en 3D y realidad virtual** para el ciclo de **Desarrollo de Aplicaciones Web (DAW)**. Cinco sectores convierten los contenidos de clase en una misión de disparos: desde la cabina de tu caza hay que **derribar la respuesta correcta** antes de que cruce la línea de defensa.
 
-La portada `index.html` es un juego completo y autocontenido que carga **Three.js y `VRButton` desde CDN mediante `importmap`**. La versión de recreativa 2D original sigue disponible en [`arcade-clasico.html`](./arcade-clasico.html).
+La portada `index.html` es un **selector de modo** con la estética del juego. Desde ahí se entra a la **cabina FPV** (`fpv.html`, juego WebXR autocontenido que carga Three.js y `VRButton` desde CDN mediante `importmap`) o al **arcade clásico** (`arcade-clasico.html`, la versión modular de recreativa).
 
 > **Demo:** [https://jrubioastigarraga.github.io/la-web-por-dentro/](https://jrubioastigarraga.github.io/la-web-por-dentro/)
 
 > Funciona en cualquier navegador moderno. Para VR, ábrelo en el navegador de Meta Quest o Pico 4 y pulsa **Enter VR**.
 
+![Pantalla principal: elige Cabina FPV o Arcade clásico](./docs/portada.png)
+
 ![Menú holográfico de la cabina](./docs/cockpit-menu.png)
+
+## Pantalla principal y navegación
+
+- **`index.html`**: elige **Cabina FPV** o **Arcade clásico**.
+- **`fpv.html`**: cabina en primera persona. La barra superior permite volver a **Inicio**, abrir **Moodle** o saltar al **Arcade clásico**.
+- **`arcade-clasico.html`**: recreativa modular. La barra superior permite volver a **Inicio** o entrar en la **Cabina FPV**.
+- **Salir siempre**: en escritorio están los enlaces **← Inicio**, **← Menú** y `Esc`; en VR hay botones 3D de **SALIR/INICIO** visibles en todo momento, incluso durante la partida.
 
 ## La cabina
 
 [](#la-cabina)
 
-- **Vista en primera persona** dentro de un caza procedural: marco metálico, panel de instrumentos con luces emisivas, consolas laterales, cúpula de cristal y hélice girando frente al morro.
-- **HUD diegético** dibujado con `CanvasTexture` sobre el panel de instrumentos: `SCORE`, `HP`, `OLEADA`, pregunta actual y explicación del resultado. Nada de menús pegados a la cara.
+- **Vista en primera persona** dentro de un caza procedural: marco metálico más ancho, panel de instrumentos con luces emisivas, consolas laterales, cúpula de cristal y hélice girando frente al morro.
+- **Pregunta siempre arriba**: un HUD anclado a la cabeza muestra el enunciado y la explicación en la parte superior de la pantalla, tanto en escritorio como en VR.
+- **HUD diegético** dibujado con `CanvasTexture` sobre el panel de instrumentos: `SCORE`, `HP`, `OLEADA`, sector y mensaje de estado. Nada de menús pegados a la cara.
 - **Océano infinito** con olas geométricas en shader, islas low-poly con palmeras, nubes volumétricas, estelas de velocidad, niebla y un cielo con degradado y sol.
 - **Tres tipos de enemigo** que llegan de frente en formación:
   1. **Caza ligero:** rápido y en formación.
@@ -51,7 +61,8 @@ La portada `index.html` es un juego completo y autocontenido que carga **Three.j
 | Disparar | Gatillo derecho (`selectstart` / `selectend`) | `ESPACIO` o clic |
 | Recentrar la palanca | `squeeze` del mando izquierdo | — |
 | Elegir menú | Dispara al botón holográfico | Clic en el botón |
-| Volver al menú | — | `Esc` o botón **← Menú** |
+| Volver al menú | Botón **← Menú** / **SALIR** 3D | `Esc` o botón **← Menú** |
+| Salir a la portada | Botón **SALIR** 3D (siempre visible) | `Esc` en el menú o **← Inicio** |
 
 En VR la cabina permanece **nivelada respecto al horizonte**: el mundo es el que se desplaza y la cabina solo se inclina unos grados (*banking*) para dar sensación de vuelo, sin rotar la cámara del usuario. Así se evita el mareo.
 
@@ -75,6 +86,7 @@ Cada sector tiene **10 preguntas** en su banco, con **4 opciones** cada una. En 
 
 - **Jugar campaña:** los cinco sectores seguidos.
 - **Practicar un sector:** una partida corta de una sola asignatura, ideal para repasar en clase.
+- **Moodle:** carga las preguntas del cuestionario y conviértelas en oleadas o pantallas. Disponible en **ambos modos**.
 - **Arcade clásico:** la versión de recreativa 2D con ratón, pantalla holográfica y **preguntas desde Moodle**, disponible en [`arcade-clasico.html`](./arcade-clasico.html).
 
 ## Arcade clásico
@@ -99,21 +111,22 @@ La versión de recreativa (`arcade-clasico.html`) mantiene la mecánica original
 
 El botón **ES / EU** cambia la interfaz, el HUD, los mensajes y los títulos de sector. El banco de preguntas está en castellano; si una pregunta tuviera `qEu`, `optionsEu` y `whyEu`, se usaría su traducción. En la cabina, las preguntas se muestran tal como estén escritas en el banco.
 
-## Preguntas desde Moodle (arcade clásico)
+## Preguntas desde Moodle (ambos modos)
 
-[](#preguntas-desde-moodle-arcade-clásico)
+[](#preguntas-desde-moodle-ambos-modos)
 
-La cabina WebXR usa el banco local embebido para poder funcionar como un único archivo. La integración con Moodle se conserva en la versión modular:
+La cabina FPV incluye un banco local embebido para poder funcionar como un único archivo, pero también puede cargar preguntas de Moodle desde su barra superior o desde el botón **MOODLE** del menú 3D (útil en VR). Ambas versiones comparten la misma configuración guardada en `localStorage`:
 
 ```
 Juego (HTTP)  ->  API Python  ->  Moodle (format_quizdump)
 ```
 
-- Juego: **http://172.16.35.2/la-web-por-dentro/arcade-clasico.html**
+- Juego FPV: **http://172.16.35.2/la-web-por-dentro/fpv.html**
+- Juego clásico: **http://172.16.35.2/la-web-por-dentro/arcade-clasico.html**
 - API: **http://172.16.35.2/escuadron-api**
 - Plugin: `format_quizdump` (ZIP parcheado en [`moodle/format_quizdump.zip`](./moodle/format_quizdump.zip))
 
-En la pantalla inicial del arcade clásico, pulsa **Moodle** y rellena solo:
+En cualquiera de los dos juegos, pulsa **Moodle** y rellena solo:
 
 - **API (proxy)**: `http://172.16.35.2/escuadron-api`
 - **Cuestionario**: `quiz:39` (ID del quiz), `course:51` (todos los quizzes de un curso) o `cmid:7772` (el número que aparece en la URL de Moodle `mod/quiz/edit.php?cmid=7772`).
@@ -123,12 +136,14 @@ Pulsa **Guardar** para conservarlo o **Cargar y jugar** para empezar.
 También por enlace, cómodo en Pico 4:
 
 ```
+http://172.16.35.2/la-web-por-dentro/fpv.html?api=http://172.16.35.2/escuadron-api&quiz=quiz:39&start=1
 http://172.16.35.2/la-web-por-dentro/arcade-clasico.html?api=http://172.16.35.2/escuadron-api&quiz=quiz:39&start=1
 ```
 
 Para el quiz de `https://moodle.lhusurbil.eus/mod/quiz/edit.php?cmid=7772`:
 
 ```
+http://172.16.35.2/la-web-por-dentro/fpv.html?api=http://172.16.35.2/escuadron-api&cmid=7772&start=1
 http://172.16.35.2/la-web-por-dentro/arcade-clasico.html?api=http://172.16.35.2/escuadron-api&cmid=7772&start=1
 ```
 
@@ -190,8 +205,8 @@ Es un **lanzador**: abre el juego en el navegador del Pico, que es el que ofrece
    ```
 
    o copia el APK al Pico y ábrelo.
-3. Abre **Escuadrón Web** → se abre el navegador con
-   `https://jrubioastigarraga.github.io/la-web-por-dentro/` → pulsa **Enter VR**.
+3. Abre **Escuadrón Web** → se abre el navegador con la portada →
+   elige **Cabina FPV** → pulsa **Enter VR**.
 
 La URL se cambia en `android/app/src/main/res/values/strings.xml`. Por defecto
 apunta a la demo pública de GitHub Pages, así que funciona fuera de la red del
@@ -211,17 +226,18 @@ npm run build    # genera dist/
 npm run preview  # sirve dist/
 ```
 
-`index.html` no necesita compilación: puedes servirlo con cualquier servidor
-estático. El `importmap` apunta a `three@0.180.0` en jsDelivr, así que también
-puedes abrirlo directamente y desplegarlo tal cual.
+`index.html` y `fpv.html` no necesitan compilación: puedes servirlos con
+cualquier servidor estático. El `importmap` apunta a `three@0.180.0` en jsDelivr,
+así que también puedes abrirlos directamente y desplegarlos tal cual.
 
-En `npm run build`, Vite compila el arcade clásico y **copia `index.html` sin
-transformarlo** para conservar su condición de archivo único.
+En `npm run build`, Vite compila el arcade clásico y **copia `index.html` y
+`fpv.html` sin transformarlos** para conservar su condición de archivos únicos.
 
 ### Estructura
 
 ```
-index.html             cabina WebXR completa: render, vuelo, enemigos, HUD y menú
+index.html             selector de modo con la estética del juego
+fpv.html               cabina WebXR completa: render, vuelo, enemigos, HUD, Moodle y menú
 arcade-clasico.html    portada de la versión modular original
 src/
   main.js              bucle, cámara, raycasting, mandos VR y pantallas
@@ -243,7 +259,7 @@ moodle/
 
 ### Añadir o cambiar preguntas
 
-En la cabina WebXR, el banco está al principio de `index.html` (constante
+En la cabina FPV, el banco está al principio de `fpv.html` (constante
 `SECTORS`). En la versión modular está en `src/arcade/questions.js`. Cada
 pregunta tiene esta forma:
 
@@ -256,7 +272,7 @@ La respuesta correcta se baraja en cada oleada: el índice `correct` solo indica
 cuál es, nunca se muestra en una posición fija ni con un color distinto.
 
 Para cambiar cuántas preguntas tiene cada partida, ajusta `CFG.questionsPerSector`
-en `index.html` o `QUESTIONS_PER_SECTOR` en `src/arcade/questions.js`.
+en `fpv.html` o `QUESTIONS_PER_SECTOR` en `src/arcade/questions.js`.
 
 ## Despliegue
 

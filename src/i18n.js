@@ -54,6 +54,8 @@ const STRINGS = {
 
     /* controles */
     back: '← Menú',
+    home: '← Inicio',
+    fpvMode: 'Cabina FPV',
     reset: 'Borrar récord',
     hintMove: 'Mueve el ratón para pilotar · clic o ESPACIO para disparar',
     hintVR: 'En VR: apunta con el mando y pulsa el gatillo',
@@ -85,7 +87,7 @@ const STRINGS = {
     moodleReady: '{n} preguntas cargadas.',
     moodleNeedIds: 'Escribe el ID del cuestionario o al menos una ID.',
     moodleNoConfig: 'Configura Moodle para jugar con tus preguntas.',
-    moodleHint: 'Pulsa Moodle en la barra superior antes de entrar en VR.',
+    moodleHint: 'Configura Moodle desde la barra superior o pulsa MOODLE en el menú 3D.',
     moodleMode: 'Moodle · {n} preguntas',
     moodleQuestion: 'Pregunta {n} de {total}',
     moodleDone: 'MOODLE COMPLETADO',
@@ -144,6 +146,8 @@ const STRINGS = {
 
     /* kontrolak */
     back: '← Menua',
+    home: '← Hasiera',
+    fpvMode: 'FPV kabina',
     reset: 'Errekorra ezabatu',
     hintMove: 'Mugitu sagua gidatzeko · klik edo ESPAZIOA tiratzeko',
     hintVR: 'VR-n: seinalatu agintearekin eta sakatu triggerra',
@@ -175,7 +179,7 @@ const STRINGS = {
     moodleReady: '{n} galdera kargatuta.',
     moodleNeedIds: 'Idatzi galdetegiaren IDa edo gutxienez ID bat.',
     moodleNoConfig: 'Konfiguratu Moodle zure galderak erabiltzeko.',
-    moodleHint: 'Sakatu Moodle goiko barran VRra sartu aurretik.',
+    moodleHint: 'Konfiguratu Moodle goiko barran edo sakatu MOODLE 3D menuan.',
     moodleMode: 'Moodle · {n} galdera',
     moodleQuestion: '{n}. galdera, {total}tik',
     moodleDone: 'MOODLE AMAITUTA',
@@ -251,6 +255,10 @@ export function applyStaticText() {
   document.documentElement.lang = current;
   const back = document.getElementById('btn-back');
   if (back) back.textContent = t('back');
+  const home = document.getElementById('link-home');
+  if (home) home.textContent = t('home');
+  const fpv = document.getElementById('link-fpv');
+  if (fpv) fpv.textContent = t('fpvMode');
   const reset = document.getElementById('btn-reset');
   if (reset) reset.textContent = t('reset');
   const hint = document.getElementById('hint');

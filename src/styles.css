@@ -115,6 +115,8 @@ body.in-game #app canvas:active {
 .top-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 10px;
   pointer-events: auto;
 }
@@ -266,7 +268,8 @@ button.ui.compact {
   z-index: 10;
 }
 
-button.ui {
+button.ui,
+a.ui {
   appearance: none;
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -278,20 +281,30 @@ button.ui {
   font-weight: 600;
   cursor: pointer;
   backdrop-filter: blur(12px);
+  text-decoration: none;
   transition: border-color 0.2s, color 0.2s, transform 0.2s;
 }
 
-button.ui:hover {
+button.ui:hover,
+a.ui:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
 
-button.ui:active {
+button.ui:active,
+a.ui:active {
   transform: translateY(1px);
 }
 
 button.ui[hidden] {
   display: none;
+}
+
+button.ui.compact,
+a.ui.compact {
+  padding: 8px 13px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
 }
 
 #hint {

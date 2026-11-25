@@ -11,7 +11,7 @@ solo necesita la URL de la API y, si quieres, el quiz o curso.
 
 ## Instancia desplegada
 
-- Juego: **http://172.16.35.2/la-web-por-dentro/**
+- Juego: **http://172.16.35.2/la-web-por-dentro/fpv.html** (o `arcade-clasico.html`)
 - API: **http://172.16.35.2/escuadron-api**
 - Servicio: `escuadron-api` (systemd) en `127.0.0.1:8001`, publicado por Caddy
   en `/escuadron-api/*`.
@@ -20,7 +20,7 @@ solo necesita la URL de la API y, si quieres, el quiz o curso.
 Ejemplo:
 
 ```
-http://172.16.35.2/la-web-por-dentro/?api=http://172.16.35.2/escuadron-api&quiz=quiz:39&start=1
+http://172.16.35.2/la-web-por-dentro/fpv.html?api=http://172.16.35.2/escuadron-api&quiz=quiz:39&start=1
 ```
 
 > El juego y la API deben servirse por el **mismo esquema** (HTTP o HTTPS).
@@ -187,7 +187,7 @@ Pulsa **Guardar** para conservarlo o **Cargar y jugar** para empezar. También
 por enlace:
 
 ```
-http://172.16.35.2/la-web-por-dentro/?api=http://172.16.35.2/escuadron-api&quiz=quiz:39&start=1
+http://172.16.35.2/la-web-por-dentro/fpv.html?api=http://172.16.35.2/escuadron-api&quiz=quiz:39&start=1
 ```
 
 `API_KEY` existe para clientes propios, pero el juego no la pide.

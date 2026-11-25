@@ -4,10 +4,10 @@ import { fileURLToPath } from 'node:url';
 
 const file = (name) => fileURLToPath(new URL(`./${name}`, import.meta.url));
 
-// La portada (index.html) es un juego WebXR autocontenido que carga Three.js
-// desde CDN con importmap. Se emite tal cual para no perder esa condición de
-// "un único archivo". La versión modular original se compila aparte como
-// arcade-clasico.html.
+// La portada (index.html) y la cabina FPV (fpv.html) son juegos WebXR
+// autocontenidos que cargan Three.js desde CDN con importmap. Se emiten tal
+// cual para no perder esa condición de "un único archivo". La versión modular
+// del arcade clásico se compila aparte como arcade-clasico.html.
 export default defineConfig({
   base: './',
   server: { host: true },
@@ -21,14 +21,16 @@ export default defineConfig({
   },
   plugins: [
     {
-      name: 'emit-standalone-vr-index',
+      name: 'emit-standalone-pages',
       apply: 'build',
       generateBundle() {
-        this.emitFile({
-          type: 'asset',
-          fileName: 'index.html',
-          source: readFileSync(file('index.html'), 'utf8'),
-        });
+        for (const name of ['index.html', 'fpv.html']) {
+          this.emitFile({
+            type: 'asset',
+            fileName: name,
+            source: readFileSync(file(name), 'utf8'),
+          });
+        }
       },
     },
   ],

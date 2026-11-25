@@ -1,0 +1,4804 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Escuadrón Web · Cabina WebXR</title>
+    <meta
+      name="description"
+      content="Arcade educativo de combate aéreo en realidad virtual: derriba la respuesta correcta desde la cabina de tu caza. WebXR + Three.js."
+    />
+    <meta name="theme-color" content="#070b14" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23070b14'/%3E%3Ccircle cx='32' cy='32' r='17' fill='none' stroke='%234de2c5' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%234de2c5'/%3E%3C/svg%3E"
+    />
+
+    <!-- Three.js y VRButton se cargan desde CDN mediante importmap. -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+        }
+      }
+    </script>
+
+    <style>
+      :root {
+        --bg: #070b14;
+        --ink: #eaf2f7;
+        --muted: #8296ad;
+        --accent: #4de2c5;
+        --amber: #ffb454;
+        --danger: #ff5d73;
+        --line: rgba(255, 255, 255, 0.12);
+        --font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--font);
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      #app,
+      #app canvas {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      #app canvas {
+        touch-action: none;
+        cursor: default;
+      }
+
+      body.playing #app canvas {
+        cursor: crosshair;
+      }
+
+      /* ---------------------------------------------------------- topbar */
+
+      #topbar {
+        position: fixed;
+        inset: 0 0 auto 0;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 16px 20px;
+        pointer-events: none;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        text-shadow: 0 2px 20px rgba(0, 0, 0, 0.65);
+      }
+
+      .brand small {
+        display: block;
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .logo {
+        width: 28px;
+        height: 28px;
+        border-radius: 9px;
+        background: linear-gradient(135deg, var(--accent), #7c9cff);
+        box-shadow: 0 0 24px rgba(77, 226, 197, 0.35);
+      }
+
+      .top-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 10px;
+        pointer-events: auto;
+      }
+
+      .langs {
+        display: flex;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: rgba(9, 15, 26, 0.78);
+        backdrop-filter: blur(12px);
+      }
+
+      .langs .lang {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        padding: 8px 11px;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        cursor: pointer;
+      }
+
+      .langs .lang.on {
+        background: var(--accent);
+        color: #04120f;
+      }
+
+      .ui {
+        appearance: none;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 9px 14px;
+        background: rgba(9, 15, 26, 0.78);
+        color: var(--ink);
+        font: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        backdrop-filter: blur(12px);
+        transition: border-color 0.2s, color 0.2s, transform 0.2s;
+      }
+
+      .ui:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .ui:active {
+        transform: translateY(1px);
+      }
+
+      /* ------------------------------------------------------- modal Moodle */
+
+      .modal {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: rgba(3, 6, 12, 0.72);
+        backdrop-filter: blur(8px);
+      }
+
+      .modal[hidden] {
+        display: none;
+      }
+
+      .modal-card {
+        width: min(470px, 100%);
+        display: grid;
+        gap: 8px;
+        padding: 22px;
+        border: 1px solid rgba(77, 226, 197, 0.35);
+        border-radius: 18px;
+        background: rgba(6, 12, 22, 0.97);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+      }
+
+      .modal-card h2 {
+        margin: 0 0 6px;
+        font-size: 18px;
+      }
+
+      .modal-card label {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .modal-card input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: rgba(2, 6, 12, 0.9);
+        color: var(--ink);
+        font: inherit;
+        font-size: 14px;
+      }
+
+      .modal-card input:focus {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+
+      .modal-card .help {
+        margin: 2px 0 0;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.5;
+      }
+
+      .modal-card .status {
+        min-height: 16px;
+        margin: 4px 0 0;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .modal-card .status.error {
+        color: var(--danger);
+      }
+
+      .modal-card .status.ok {
+        color: #4ade80;
+      }
+
+      .modal-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .modal-actions .primary {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .modal-actions .primary:hover {
+        background: rgba(77, 226, 197, 0.12);
+      }
+
+      /* ------------------------------------------------------ ayudas 2D */
+
+      #hint {
+        position: fixed;
+        right: 20px;
+        bottom: 84px;
+        z-index: 10;
+        max-width: 340px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.6;
+        text-align: right;
+        pointer-events: none;
+        text-shadow: 0 1px 10px rgba(0, 0, 0, 0.85);
+      }
+
+      #btn-menu {
+        position: fixed;
+        left: 20px;
+        bottom: 20px;
+        z-index: 10;
+      }
+
+      #btn-menu[hidden] {
+        display: none;
+      }
+
+      #crosshair {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        z-index: 9;
+        width: 18px;
+        height: 18px;
+        margin: -9px 0 0 -9px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+      }
+
+      #crosshair::before,
+      #crosshair::after {
+        content: '';
+        position: absolute;
+        background: rgba(234, 250, 255, 0.85);
+        box-shadow: 0 0 6px rgba(77, 226, 197, 0.9);
+      }
+
+      #crosshair::before {
+        top: 8px;
+        left: 0;
+        width: 18px;
+        height: 1px;
+      }
+
+      #crosshair::after {
+        top: 0;
+        left: 8px;
+        width: 1px;
+        height: 18px;
+      }
+
+      body.playing #crosshair {
+        opacity: 0.75;
+      }
+
+      /* -------------------------------------------------------- loader */
+
+      #loader {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: grid;
+        place-content: center;
+        justify-items: center;
+        gap: 16px;
+        background: var(--bg);
+        transition: opacity 0.6s ease;
+      }
+
+      #loader.done {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      #loader p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        letter-spacing: 0.04em;
+      }
+
+      .spinner {
+        width: 34px;
+        height: 34px;
+        border: 2px solid rgba(255, 255, 255, 0.12);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* VRButton se ancla abajo a la derecha, como en el arcade original. */
+      #VRButton {
+        position: fixed !important;
+        right: 20px !important;
+        bottom: 20px !important;
+        left: auto !important;
+        top: auto !important;
+        z-index: 10 !important;
+        margin: 0 !important;
+        opacity: 1 !important;
+        font-family: var(--font) !important;
+      }
+
+      /* Dentro de una sesión inmersiva manda el HUD diegético. */
+      body.xr #topbar,
+      body.xr #hint,
+      body.xr #btn-menu,
+      body.xr #crosshair,
+      body.xr #VRButton,
+      body.xr .modal {
+        display: none !important;
+      }
+
+      @media (max-width: 720px) {
+        .brand small,
+        #hint {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="app" aria-label="Juego de combate aéreo en realidad virtual"></div>
+
+    <header id="topbar">
+      <div class="brand">
+        <span class="logo" aria-hidden="true"></span>
+        <span>Escuadrón Web<small>DAW · cabina WebXR</small></span>
+      </div>
+      <div class="top-actions">
+        <div class="langs" id="langs" aria-label="Idioma">
+          <button class="lang" type="button" data-lang="es">ES</button>
+          <button class="lang" type="button" data-lang="eu">EU</button>
+        </div>
+        <a class="ui" id="link-home" href="./index.html" title="Volver a la pantalla principal">
+          ← Inicio
+        </a>
+        <button class="ui" type="button" id="btn-moodle">Moodle</button>
+        <a class="ui" href="./arcade-clasico.html" title="Versión de recreativa con pantalla 2D">
+          Arcade clásico
+        </a>
+      </div>
+    </header>
+
+    <div id="moodle-modal" class="modal" hidden>
+      <form class="modal-card" id="moodle-form">
+        <h2 id="moodle-title">Preguntas de Moodle</h2>
+        <label for="moodle-api" id="moodle-api-label">API (proxy)</label>
+        <input
+          id="moodle-api"
+          type="url"
+          inputmode="url"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="http://172.16.35.2/escuadron-api"
+        />
+        <p class="help" id="moodle-api-hint">
+          URL de la API (por ejemplo http://172.16.35.2/escuadron-api).
+        </p>
+        <label for="moodle-quiz" id="moodle-quiz-label">Cuestionario</label>
+        <input
+          id="moodle-quiz"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="quiz:39, course:51 o cmid:7772"
+        />
+        <p class="help" id="moodle-quiz-hint">
+          quiz:39 (ID), course:51 (curso) o cmid:7772 (el número de
+          mod/quiz/edit.php?cmid=...). Si lo dejas vacío y solo hay uno, se
+          usará ese.
+        </p>
+        <p class="status" id="moodle-status" role="status"></p>
+        <div class="modal-actions">
+          <button class="ui" type="button" id="moodle-save">Guardar</button>
+          <button class="ui" type="button" id="moodle-test">Probar</button>
+          <button class="ui primary" type="submit" id="moodle-play">
+            Cargar y jugar
+          </button>
+          <button class="ui" type="button" id="moodle-close">Cerrar</button>
+        </div>
+      </form>
+    </div>
+
+    <button class="ui" id="btn-menu" type="button" hidden>← Menú</button>
+
+    <div id="hint">
+      Escritorio: clic para capturar el ratón · WASD para esquivar · ESPACIO para disparar<br />
+      VR: mando izquierdo pilota · mando derecho apunta y dispara<br />
+      Apunta al cartel holográfico y dispara al botón para empezar
+    </div>
+
+    <div id="crosshair" aria-hidden="true"></div>
+
+    <div id="loader">
+      <div class="spinner" aria-hidden="true"></div>
+      <p>Cargando la cabina…</p>
+    </div>
+
+    <script type="module">
+      import * as THREE from 'three';
+      import { VRButton } from 'three/addons/webxr/VRButton.js';
+
+      /* ==========================================================================
+         0. CONFIGURACIÓN, IDIOMA Y UTILIDADES
+         ========================================================================== */
+
+      const CFG = {
+        eyeHeight: 1.45,
+        maxHp: 100,
+        errorDamage: 34,
+        flakDamage: 16,
+        questionsPerSector: 6,
+        spawnZ: -58,
+        defenseZ: -20,
+        bulletSpeed: 120,
+        bombSpeed: 13,
+        fireCooldown: 0.11,
+        flightRangeX: 4.2,
+        flightRangeY: 1.9,
+        bestKey: 'lwpd.vr.v1',
+      };
+
+      const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+      const MONO = 'ui-monospace, Consolas, "Courier New", monospace';
+      const OPTION_TONES = ['#ff5d73', '#ffb454', '#a78bfa', '#60a5fa'];
+
+      const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+      const rand = (min, max) => min + Math.random() * (max - min);
+      const clamp = THREE.MathUtils.clamp;
+      const damp = THREE.MathUtils.damp;
+
+      const STR = {
+        es: {
+          brand: 'ESCUADRÓN WEB',
+          subtitle: 'LA WEB POR DENTRO · ARCADE VR',
+          play: '▶  JUGAR CAMPAÑA',
+          practice: 'PRACTICAR UN SECTOR',
+          best: 'RÉCORD PERSONAL',
+          aimHint: 'VR: apunta con el mando y dispara al botón · Escritorio: clic',
+          menuBody:
+            'Derriba la respuesta correcta antes de que cruce la línea de defensa. Si disparas a una equivocada, pierdes HP.',
+          standby: 'MISIÓN EN ESPERA',
+          tagQuestion: 'PREGUNTA',
+          tagCorrect: 'CORRECTO',
+          tagFail: 'FALLO',
+          sector: 'SECTOR',
+          wave: 'OLEADA',
+          score: 'SCORE',
+          hp: 'HP',
+          stageClear: 'SECTOR DESPEJADO',
+          correctKill: '¡Derribado!',
+          wrongKill: '¡Ese no era!',
+          correctWas: 'La respuesta correcta era',
+          escaped: 'Se escapó la respuesta correcta.',
+          wasShort: 'Era',
+          downTitle: 'ESCUADRÓN DERRIBADO',
+          victoryTitle: 'MISIÓN CUMPLIDA',
+          retry: 'REINICIAR',
+          menu: 'MENÚ',
+          record: 'RÉCORD',
+          resultScore: 'PUNTUACIÓN',
+          resultSectors: 'SECTORES DESPEJADOS',
+          newSector: 'Sector {n} despejado. +250 pts y reparación de casco.',
+          campaignDone: 'Los cinco sectores están despejados.',
+          practiceDone: 'Práctica completada.',
+          downMessage: 'El escuadrón ha caído. Vuelve a intentarlo.',
+          hitBomber: '¡Impacto! El bombardero aguanta.',
+          flak: '¡Flak enemigo! Esquiva moviendo la mano izquierda.',
+          tower: 'La torre de control te da la bienvenida, piloto.',
+          moodleTitle: 'Preguntas de Moodle',
+          moodleApi: 'API (proxy)',
+          moodleApiHint: 'URL de la API (por ejemplo http://172.16.35.2/escuadron-api).',
+          moodleQuiz: 'Cuestionario',
+          moodleQuizHint:
+            'quiz:39 (ID), course:51 (curso) o cmid:7772 (el número de mod/quiz/edit.php?cmid=...). Si lo dejas vacío y solo hay uno, se usará ese.',
+          moodleSave: 'Guardar',
+          moodleSaved: 'Configuración guardada.',
+          moodleNeedApi: 'Escribe la URL de la API.',
+          moodlePlay: 'Cargar y jugar',
+          moodleTest: 'Probar',
+          moodleClose: 'Cerrar',
+          moodleLoading: 'Cargando preguntas…',
+          moodleError: 'No se han podido cargar las preguntas.',
+          moodleReady: '{n} preguntas cargadas.',
+          moodleHint: 'Configura Moodle desde la barra superior (escritorio) o pulsa MOODLE en el menú 3D.',
+          moodleQuestion: 'Pregunta {n} de {total}',
+          moodleDone: 'MOODLE COMPLETADO',
+          moodleResult: '{done} de {total} pantallas',
+          moodleMessage:
+            'Moodle completado: {done} de {total} pantallas y {score} puntos.',
+        },
+        eu: {
+          brand: 'ESCUADRÓN WEB',
+          subtitle: 'LA WEB POR DENTRO · ARCADE VR',
+          play: '▶  JOLASTU KANPAINA',
+          practice: 'PRAKTIKATU SEKTORE BAT',
+          best: 'ERREKOR PERTSONALA',
+          aimHint: 'VR: seinalatu agintearekin eta tiro egin botoiari · Mahaigaina: klik',
+          menuBody:
+            'Bota erantzun zuzena defentsa-marra zeharkatu aurretik. Okerrekoari tiratuz gero, HP galduko duzu.',
+          standby: 'MISIOA ZAIN',
+          sector: 'SEKTOREA',
+          wave: 'OLATUA',
+          score: 'SCORE',
+          hp: 'HP',
+          stageClear: 'SEKTOREA GARBITUTA',
+          correctKill: 'Botata!',
+          wrongKill: 'Hori ez zen!',
+          correctWas: 'Erantzun zuzena hau zen',
+          escaped: 'Erantzun zuzenak ihes egin du.',
+          wasShort: 'Hau zen',
+          downTitle: 'ESKADROIA ERAITSITA',
+          victoryTitle: 'MISIOA BETETA',
+          retry: 'BERRIRO SAIATU',
+          menu: 'MENUA',
+          record: 'ERREKORRA',
+          resultScore: 'PUNTUAZIOA',
+          resultSectors: 'GARBITUTAKO SEKTOREAK',
+          newSector: '{n}. sektorea garbituta. +250 pt eta kroskoaren konponketa.',
+          campaignDone: 'Bost sektoreak garbituta daude.',
+          practiceDone: 'Praktika amaituta.',
+          downMessage: 'Eskadroia erori da. Saiatu berriro.',
+          hitBomber: 'Talka! Bonbaketariak eusten dio.',
+          flak: 'Etsaiaren flaka! Eskuz albo batera egin.',
+          tower: 'Kontrol-dorreak ongietorria ematen dizu, pilotu.',
+          moodleTitle: 'Moodleko galderak',
+          moodleApi: 'APIa (proxy)',
+          moodleApiHint: 'APIaren URLa (adibidez http://172.16.35.2/escuadron-api).',
+          moodleQuiz: 'Galdetegia',
+          moodleQuizHint:
+            'quiz:39 (ID), course:51 (ikastaroa) edo cmid:7772 (/mod/quiz/edit.php?cmid=... zenbakia). Hutsik uzten baduzu eta bakarra badago, hura erabiliko da.',
+          moodleSave: 'Gorde',
+          moodleSaved: 'Konfigurazioa gordeta.',
+          moodleNeedApi: 'Idatzi APIaren URLa.',
+          moodlePlay: 'Kargatu eta jolastu',
+          moodleTest: 'Probatu',
+          moodleClose: 'Itxi',
+          moodleLoading: 'Galderak kargatzen…',
+          moodleError: 'Ezin izan dira galderak kargatu.',
+          moodleReady: '{n} galdera kargatuta.',
+          moodleHint: 'Konfiguratu Moodle goiko barran (mahaigaina) edo sakatu MOODLE 3D menuan.',
+          moodleQuestion: '{n}. galdera, {total}tik',
+          moodleDone: 'MOODLE AMAITUTA',
+          moodleResult: '{done} / {total} pantaila',
+          moodleMessage:
+            'Moodle amaituta: {done} / {total} pantaila eta {score} puntu.',
+        },
+      };
+
+      let LANG = 'es';
+      try {
+        LANG = localStorage.getItem('lwpd.lang') === 'eu' ? 'eu' : 'es';
+      } catch {
+        LANG = 'es';
+      }
+
+      function t(key, vars = {}) {
+        let text = (STR[LANG] && STR[LANG][key]) || STR.es[key] || key;
+        for (const [name, value] of Object.entries(vars)) {
+          text = text.replaceAll(`{${name}}`, String(value));
+        }
+        return text;
+      }
+
+      const sectorTitle = (sector) =>
+        LANG === 'eu' && sector.titleEu ? sector.titleEu : sector.title;
+      const sectorBrief = (sector) =>
+        LANG === 'eu' && sector.briefEu ? sector.briefEu : sector.brief;
+
+      function setLang(lang) {
+        LANG = lang === 'eu' ? 'eu' : 'es';
+        try {
+          localStorage.setItem('lwpd.lang', LANG);
+        } catch {
+          /* almacenamiento no disponible */
+        }
+        applyStaticText();
+        for (const button of document.querySelectorAll('[data-lang]')) {
+          button.classList.toggle('on', button.dataset.lang === LANG);
+        }
+        if (game.state === 'menu') {
+          game.hudQuestion = t('menuBody');
+          game.hudFeedback = `${t('record')}: ${save.best} PTS`;
+          showMenuPanel();
+        } else if (game.state === 'gameover' || game.state === 'victory') {
+          showResultPanel(game.state === 'victory');
+        }
+        refreshHud();
+      }
+
+      function applyStaticText() {
+        document.documentElement.lang = LANG;
+        const hint = document.getElementById('hint');
+        if (hint) {
+          hint.innerHTML =
+            `${LANG === 'eu' ? 'Mahaigaina: klik sagua harrapatzeko · WASD saihesteko · ESPAZIOA tiratzeko' : 'Escritorio: clic para capturar el ratón · WASD para esquivar · ESPACIO para disparar'}<br />` +
+            `${LANG === 'eu' ? 'VR: ezkerreko aginteak gidatzen du · eskuinekoak seinalatu eta tiratu' : 'VR: mando izquierdo pilota · mando derecho apunta y dispara'}<br />` +
+            `${LANG === 'eu' ? 'Seinalatu kartel holografikoa eta tiro egin botoiari hasteko' : 'Apunta al cartel holográfico y dispara al botón para empezar'}`;
+        }
+        const menu = document.getElementById('btn-menu');
+        if (menu) menu.textContent = LANG === 'eu' ? '← Menua' : '← Menú';
+        const home = document.getElementById('link-home');
+        if (home) home.textContent = LANG === 'eu' ? '← Hasiera' : '← Inicio';
+        const moodle = document.getElementById('btn-moodle');
+        if (moodle) moodle.textContent = 'Moodle';
+
+        const set = (id, text) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = text;
+        };
+        set('moodle-title', t('moodleTitle'));
+        set('moodle-api-label', t('moodleApi'));
+        set('moodle-api-hint', t('moodleApiHint'));
+        set('moodle-quiz-label', t('moodleQuiz'));
+        set('moodle-quiz-hint', t('moodleQuizHint'));
+        set('moodle-save', t('moodleSave'));
+        set('moodle-play', t('moodlePlay'));
+        set('moodle-test', t('moodleTest'));
+        set('moodle-close', t('moodleClose'));
+      }
+
+      function shuffle(list) {
+        const out = list.slice();
+        for (let i = out.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [out[i], out[j]] = [out[j], out[i]];
+        }
+        return out;
+      }
+
+      function roundRect(ctx, x, y, w, h, r) {
+        const rr = Math.max(0, Math.min(r, w / 2, h / 2));
+        ctx.beginPath();
+        ctx.moveTo(x + rr, y);
+        ctx.arcTo(x + w, y, x + w, y + h, rr);
+        ctx.arcTo(x + w, y + h, x, y + h, rr);
+        ctx.arcTo(x, y + h, x, y, rr);
+        ctx.arcTo(x, y, x + w, y, rr);
+        ctx.closePath();
+      }
+
+      function wrapLines(ctx, text, maxWidth, maxLines = 99) {
+        const words = String(text || '').split(/\s+/).filter(Boolean);
+        const lines = [];
+        let line = '';
+        for (const word of words) {
+          const test = line ? `${line} ${word}` : word;
+          if (ctx.measureText(test).width > maxWidth && line) {
+            lines.push(line);
+            line = word;
+          } else {
+            line = test;
+          }
+        }
+        if (line) lines.push(line);
+        if (lines.length > maxLines) {
+          const cut = lines.slice(0, maxLines);
+          cut[maxLines - 1] = `${cut[maxLines - 1].slice(0, -1)}…`;
+          return cut;
+        }
+        return lines;
+      }
+
+      function fitFont(ctx, text, maxWidth, px, weight = 700) {
+        let size = Math.max(10, Math.round(px));
+        ctx.font = `${weight} ${size}px ${FONT}`;
+        while (ctx.measureText(text).width > maxWidth && size > 10) {
+          size -= 1;
+          ctx.font = `${weight} ${size}px ${FONT}`;
+        }
+        return size;
+      }
+
+      /* ==========================================================================
+         1. BANCO DE PREGUNTAS (mismo contenido que src/arcade/questions.js)
+         ========================================================================== */
+
+      const SECTORS = [
+        {
+          id: 'http',
+          title: 'Despliegue',
+          titleEu: 'Inplementazioa',
+          tone: '#4de2c5',
+          brief:
+            'El escuadrón cruza la red. Derriba la respuesta correcta sobre DNS, HTTPS, códigos de estado y despliegue.',
+          briefEu:
+            'Eskadroia sarean zehar doa. Bota erantzun zuzena DNS, HTTPS, egoera-kode eta inplementazioari buruz.',
+          questions: [
+            ['¿Qué registro DNS asocia un nombre a una dirección IPv4?', ['A', 'AAAA', 'MX', 'CNAME'], 0, 'El registro A asocia un nombre a una IPv4.'],
+            ['¿En qué puerto escucha HTTPS por defecto?', ['443', '80', '22', '3306'], 0, 'HTTPS usa el 443 y cifra con TLS.'],
+            ['¿En qué puerto escucha HTTP por defecto?', ['80', '443', '21', '3306'], 0, 'HTTP sin cifrar usa el 80.'],
+            ['¿Qué código HTTP significa "No encontrado"?', ['404', '200', '500', '301'], 0, '404 indica que el recurso pedido no existe.'],
+            ['¿Qué código HTTP indica un fallo del servidor?', ['500', '404', '301', '200'], 0, '500 es un error interno del servidor.'],
+            ['¿Qué código HTTP es una redirección permanente?', ['301', '200', '404', '429'], 0, '301 mueve el recurso de forma permanente.'],
+            ['¿Qué hace TLS?', ['Cifra la conexión', 'Resuelve dominios', 'Reparte tráfico', 'Comprime imágenes'], 0, 'TLS cifra la conexión; antes se llamaba SSL.'],
+            ['¿Qué hace un balanceador de carga?', ['Reparte peticiones', 'Cifra el correo', 'Compila el CSS', 'Resuelve dominios'], 0, 'Reparte las peticiones entre varios servidores.'],
+            ['¿Qué carpeta genera `npm run build` en Vite?', ['dist/', 'src/', 'public/', 'node_modules/'], 0, 'Vite compila la aplicación en dist/.'],
+            ['¿Qué código HTTP es "Acceso prohibido"?', ['403', '200', '404', '500'], 0, '403 indica que no tienes permiso para ese recurso.'],
+          ],
+        },
+        {
+          id: 'css',
+          title: 'CSS',
+          titleEu: 'CSS',
+          tone: '#ffb454',
+          brief:
+            'El escuadrón entra en el motor del navegador. Derriba la respuesta correcta sobre cajas, selectores y flex.',
+          briefEu:
+            'Eskadroia nabigatzailearen motorrean sartu da. Bota erantzun zuzena kaxei, hautatzaileei eta flexi buruz.',
+          questions: [
+            ['¿Qué propiedad cambia el color del texto?', ['color', 'background', 'border', 'font-size'], 0, 'color pinta el texto; background pinta el fondo.'],
+            ['¿Qué propiedad crea espacio interior?', ['padding', 'margin', 'gap', 'border'], 0, 'padding separa el contenido del borde.'],
+            ['¿Qué propiedad crea espacio exterior?', ['margin', 'padding', 'gap', 'border'], 0, 'margin separa la caja de las demás.'],
+            ['¿Qué display crea una fila flexible?', ['flex', 'block', 'inline', 'none'], 0, 'flex alinea los hijos en un eje flexible.'],
+            ['¿Qué propiedad centra en el eje principal?', ['justify-content', 'align-items', 'flex-wrap', 'order'], 0, 'justify-content reparte el eje principal.'],
+            ['¿Qué propiedad centra en el eje cruzado?', ['align-items', 'justify-content', 'order', 'flex-wrap'], 0, 'align-items alinea en el eje cruzado.'],
+            ['¿Qué unidad es relativa al tamaño raíz?', ['rem', 'px', 'vh', 'vw'], 0, 'rem se calcula sobre el font-size del html.'],
+            ['¿Qué selector apunta a un id?', ['#id', '.clase', '*', 'tag'], 0, 'La almohadilla (#) selecciona un id.'],
+            ['¿Qué regla aplica estilos según el ancho?', ['@media', '@import', '@font-face', '@keyframes'], 0, '@media permite diseño responsive.'],
+            ['¿Qué posición se queda fija al hacer scroll?', ['sticky', 'static', 'relative', 'absolute'], 0, 'sticky pega el elemento al hacer scroll.'],
+          ],
+        },
+        {
+          id: 'git',
+          title: 'Git',
+          titleEu: 'Git',
+          tone: '#a78bfa',
+          brief:
+            'El escuadrón patrulla el grafo de commits. Derriba la respuesta correcta sobre ramas, merges y comandos.',
+          briefEu:
+            'Eskadroia commiten grafoan zehar ibiltzen da. Bota erantzun zuzena adar, merge eta komenduei buruz.',
+          questions: [
+            ['¿Qué comando registra los cambios?', ['git commit', 'git push', 'git log', 'git add'], 0, 'commit guarda una instantánea en el historial.'],
+            ['¿Qué comando sube los cambios al remoto?', ['git push', 'git pull', 'git fetch', 'git clone'], 0, 'push envía los commits al remoto.'],
+            ['¿Qué comando trae y fusiona?', ['git pull', 'git fetch', 'git clone', 'git merge'], 0, 'pull es fetch + merge.'],
+            ['¿Qué comando descarga sin fusionar?', ['git fetch', 'git pull', 'git merge', 'git clone'], 0, 'fetch trae los cambios pero no los aplica.'],
+            ['¿Qué comando cambia de rama?', ['git switch', 'git status', 'git diff', 'git log'], 0, 'switch (o checkout) cambia la rama activa.'],
+            ['¿Qué comando fusiona ramas?', ['git merge', 'git branch', 'git clone', 'git add'], 0, 'merge integra otra rama en la actual.'],
+            ['¿Qué comando guarda cambios temporalmente?', ['git stash', 'git commit', 'git revert', 'git add'], 0, 'stash aparta cambios para recuperarlos después.'],
+            ['¿Qué comando deshace un commit ya publicado?', ['git revert', 'git reset', 'git stash', 'git clean'], 0, 'revert crea un commit que deshace otro.'],
+            ['¿Qué es el merge base?', ['El ancestro común', 'La rama nueva', 'El último tag', 'El primer commit'], 0, 'Es el commit del que parten las dos ramas.'],
+            ['¿Qué comando copia un repositorio?', ['git clone', 'git init', 'git fork', 'git fetch'], 0, 'clone descarga una copia completa del repositorio.'],
+          ],
+        },
+        {
+          id: 'bbdd',
+          title: 'Bases de datos',
+          titleEu: 'Datu baseak',
+          tone: '#60a5fa',
+          brief:
+            'El escuadrón sobrevuela el almacén de datos. Derriba la respuesta correcta sobre SQL, claves y JOIN.',
+          briefEu:
+            'Eskadroia datu biltegian zehar hegan doa. Bota erantzun zuzena SQL, gako eta JOINei buruz.',
+          questions: [
+            ['¿Qué sentencia lee datos?', ['SELECT', 'INSERT', 'DELETE', 'UPDATE'], 0, 'SELECT consulta filas de una tabla.'],
+            ['¿Qué sentencia inserta filas?', ['INSERT', 'UPDATE', 'SELECT', 'DELETE'], 0, 'INSERT añade filas nuevas.'],
+            ['¿Qué sentencia modifica filas?', ['UPDATE', 'DELETE', 'INSERT', 'SELECT'], 0, 'UPDATE cambia valores existentes.'],
+            ['¿Qué cláusula filtra filas?', ['WHERE', 'ORDER BY', 'GROUP BY', 'LIMIT'], 0, 'WHERE aplica la condición a cada fila.'],
+            ['¿Qué cláusula ordena el resultado?', ['ORDER BY', 'WHERE', 'LIMIT', 'GROUP BY'], 0, 'ORDER BY ordena por una o varias columnas.'],
+            ['¿Qué cláusula agrupa filas?', ['GROUP BY', 'ORDER BY', 'WHERE', 'LIMIT'], 0, 'GROUP BY agrupa para funciones de agregado.'],
+            ['¿Qué JOIN devuelve solo las coincidencias?', ['INNER JOIN', 'LEFT JOIN', 'CROSS JOIN', 'RIGHT JOIN'], 0, 'INNER JOIN descarta las filas sin pareja.'],
+            ['¿Qué JOIN conserva toda la tabla izquierda?', ['LEFT JOIN', 'INNER JOIN', 'RIGHT JOIN', 'CROSS JOIN'], 0, 'LEFT JOIN deja la izquierda y rellena con NULL.'],
+            ['¿Qué clave identifica cada fila?', ['PRIMARY KEY', 'FOREIGN KEY', 'INDEX', 'UNIQUE'], 0, 'La clave primaria es única y no nula.'],
+            ['¿Qué clave enlaza con otra tabla?', ['FOREIGN KEY', 'PRIMARY KEY', 'UNIQUE', 'INDEX'], 0, 'La clave foránea referencia otra tabla.'],
+          ],
+        },
+        {
+          id: 'a11y',
+          title: 'Accesibilidad',
+          titleEu: 'Irisgarritasuna',
+          tone: '#f472b6',
+          brief:
+            'El escuadrón protege la interfaz. Derriba la respuesta correcta sobre HTML semántico, foco y contraste.',
+          briefEu:
+            'Eskadroia interfazea babesten du. Bota erantzun zuzena HTML semantiko, foku eta kontrasteari buruz.',
+          questions: [
+            ['¿Qué atributo describe una imagen?', ['alt', 'src', 'title', 'role'], 0, 'alt da el texto alternativo de la imagen.'],
+            ['¿Qué elemento es el encabezado principal?', ['h1', 'h6', 'p', 'header'], 0, 'h1 es el título de mayor nivel.'],
+            ['¿Qué etiqueta asocia texto a un campo?', ['label', 'legend', 'span', 'small'], 0, 'label se asocia al campo con for/id.'],
+            ['¿Qué atributo nombra un botón para lectores?', ['aria-label', 'alt', 'lang', 'title'], 0, 'aria-label aporta el nombre accesible.'],
+            ['¿Qué contraste mínimo pide WCAG AA?', ['4.5:1', '1.5:1', '10:1', '2:1'], 0, 'AA exige 4.5:1 en texto normal.'],
+            ['¿Qué tecla recorre los elementos enfocables?', ['Tab', 'Esc', 'Ctrl', 'Alt'], 0, 'Tab mueve el foco en orden de documento.'],
+            ['¿Qué elemento agrupa la navegación?', ['nav', 'main', 'footer', 'aside'], 0, 'nav marca la zona de navegación.'],
+            ['¿Qué elemento marca el contenido principal?', ['main', 'nav', 'aside', 'footer'], 0, 'main contiene el contenido central.'],
+            ['¿Qué atributo declara el idioma de la página?', ['lang', 'dir', 'charset', 'role'], 0, 'lang ayuda a los lectores de pantalla.'],
+            ['¿Qué hace falta para navegar solo con teclado?', ['Foco visible', 'Más colores', 'Animaciones', 'Vídeo automático'], 0, 'Sin indicador de foco el usuario se pierde.'],
+          ],
+        },
+      ];
+
+      for (const sector of SECTORS) {
+        sector.questions = sector.questions.map(([q, options, correct, why]) => ({
+          q,
+          options,
+          correct,
+          why,
+        }));
+      }
+
+      const MOODS = [
+        { top: '#2f7fc4', horizon: '#cfeaf7', fog: '#cfeaf7', deep: '#0a476f', shallow: '#1f9ab5', sun: '#fff2c8', light: '#fff3d8', hemi: '#cfeaff', ground: '#0a2740', cloud: '#ffffff' },
+        { top: '#6b5aa6', horizon: '#ffc69a', fog: '#ffcfae', deep: '#244a78', shallow: '#4f7f9e', sun: '#ffe0a8', light: '#ffd2a6', hemi: '#ffd8b8', ground: '#2c1f2c', cloud: '#ffe6d2' },
+        { top: '#1c2a55', horizon: '#6f7fb8', fog: '#8391c4', deep: '#0b2a52', shallow: '#2a5c86', sun: '#dfe4ff', light: '#aab8ff', hemi: '#a9b8ff', ground: '#0a1024', cloud: '#c8d2f4' },
+        { top: '#2f7fa4', horizon: '#d7f3ff', fog: '#c6e8f5', deep: '#0a4766', shallow: '#2e9fbe', sun: '#eaffff', light: '#d8f6ff', hemi: '#c8f2ff', ground: '#0a2338', cloud: '#e8fcff' },
+        { top: '#8a6fa8', horizon: '#ffd9e6', fog: '#f3cfe0', deep: '#2a3f72', shallow: '#6b6fae', sun: '#fff0d8', light: '#ffe0ec', hemi: '#ffd6e8', ground: '#1d1630', cloud: '#ffe4ef' },
+      ];
+
+      /* ==========================================================================
+         2. RENDERER, ESCENA, CÁMARA Y LUCES
+         ========================================================================== */
+
+      const host = document.getElementById('app');
+      const loader = document.getElementById('loader');
+
+      let renderer;
+      try {
+        renderer = new THREE.WebGLRenderer({
+          antialias: true,
+          powerPreference: 'high-performance',
+          alpha: false,
+        });
+      } catch (error) {
+        loader.innerHTML =
+          '<p>Tu navegador no puede iniciar WebGL.<br />Prueba con Chrome, Edge o el navegador del visor.</p>';
+        throw error;
+      }
+
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.xr.enabled = true;
+      renderer.xr.setReferenceSpaceType('local-floor');
+      renderer.xr.setFramebufferScaleFactor(1.0);
+      renderer.xr.setFoveation(1.0);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.05;
+      host.appendChild(renderer.domElement);
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(MOODS[0].fog);
+      scene.fog = new THREE.Fog(MOODS[0].fog, 65, 245);
+
+      const camera = new THREE.PerspectiveCamera(
+        68,
+        window.innerWidth / window.innerHeight,
+        0.03,
+        520
+      );
+      camera.position.set(0, CFG.eyeHeight, 0);
+
+      // La cámara cuelga de la escena para que el HUD superior y el botón de
+      // salida (hijos suyos) se rendericen también dentro de WebXR.
+      scene.add(camera);
+
+      const clock = new THREE.Clock();
+
+      const hemi = new THREE.HemisphereLight(0xcfeaff, 0x0a2740, 1.25);
+      scene.add(hemi);
+
+      const sunLight = new THREE.DirectionalLight(0xfff3d8, 2.1);
+      sunLight.position.set(50, 80, -30);
+      scene.add(sunLight);
+
+      const world = new THREE.Group();
+      scene.add(world);
+
+      /* ==========================================================================
+         3. CIELO, OCÉANO, ISLAS, NUBES Y LÍNEA DE DEFENSA
+         ========================================================================== */
+
+      const skyUniforms = {
+        uTop: { value: new THREE.Color(MOODS[0].top) },
+        uHorizon: { value: new THREE.Color(MOODS[0].horizon) },
+        uSun: { value: new THREE.Color(MOODS[0].sun) },
+        uSunDir: { value: V3(0.35, 0.42, -0.84).normalize() },
+      };
+
+      const sky = new THREE.Mesh(
+        new THREE.SphereGeometry(400, 32, 20),
+        new THREE.ShaderMaterial({
+          uniforms: skyUniforms,
+          side: THREE.BackSide,
+          depthWrite: false,
+          fog: false,
+          vertexShader: `
+            varying vec3 vDir;
+            void main() {
+              vDir = position;
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `,
+          fragmentShader: `
+            uniform vec3 uTop;
+            uniform vec3 uHorizon;
+            uniform vec3 uSun;
+            uniform vec3 uSunDir;
+            varying vec3 vDir;
+
+            void main() {
+              vec3 d = normalize(vDir);
+              float h = clamp(d.y * 0.5 + 0.5, 0.0, 1.0);
+              vec3 col = mix(uHorizon, uTop, smoothstep(0.5, 1.0, h));
+              float s = max(dot(d, normalize(uSunDir)), 0.0);
+              col += uSun * (pow(s, 220.0) * 1.5 + pow(s, 9.0) * 0.16);
+              gl_FragColor = vec4(col, 1.0);
+            }
+          `,
+        })
+      );
+      sky.frustumCulled = false;
+      scene.add(sky);
+
+      const sunSprite = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+          map: makeGlowTexture('rgba(255,250,220,1)', 'rgba(255,190,120,0)'),
+          color: 0xfff2c8,
+          transparent: true,
+          opacity: 0.85,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          fog: false,
+          toneMapped: false,
+        })
+      );
+      sunSprite.position.set(150, 150, -320);
+      sunSprite.scale.setScalar(52);
+      sunSprite.material.opacity = 0.6;
+      scene.add(sunSprite);
+
+      const oceanUniforms = {
+        uTime: { value: 0 },
+        uDeep: { value: new THREE.Color(MOODS[0].deep) },
+        uShallow: { value: new THREE.Color(MOODS[0].shallow) },
+        uFogColor: { value: new THREE.Color(MOODS[0].fog) },
+        uFogNear: { value: 65 },
+        uFogFar: { value: 245 },
+      };
+
+      const oceanGeo = new THREE.PlaneGeometry(620, 620, 96, 96);
+      oceanGeo.rotateX(-Math.PI / 2);
+
+      const ocean = new THREE.Mesh(
+        oceanGeo,
+        new THREE.ShaderMaterial({
+          uniforms: oceanUniforms,
+          fog: false,
+          vertexShader: `
+            uniform float uTime;
+            varying float vWave;
+            varying vec3 vWorld;
+
+            void main() {
+              vec3 p = position;
+              float w1 = sin(p.x * 0.16 + uTime * 1.15) * 0.62;
+              float w2 = cos(p.z * 0.21 + uTime * 0.85) * 0.48;
+              float w3 = sin((p.x + p.z) * 0.08 + uTime * 0.55) * 0.42;
+              p.y += w1 + w2 + w3;
+
+              vec4 wp = modelMatrix * vec4(p, 1.0);
+              vWorld = wp.xyz;
+              vWave = w1 + w2 + w3;
+              gl_Position = projectionMatrix * viewMatrix * wp;
+            }
+          `,
+          fragmentShader: `
+            uniform vec3 uDeep;
+            uniform vec3 uShallow;
+            uniform vec3 uFogColor;
+            uniform float uFogNear;
+            uniform float uFogFar;
+            varying float vWave;
+            varying vec3 vWorld;
+
+            void main() {
+              float h = clamp(vWave * 0.28 + 0.5, 0.0, 1.0);
+              vec3 col = mix(uDeep, uShallow, h * 0.9);
+              float crest = smoothstep(0.78, 1.0, h);
+              col += vec3(0.30, 0.52, 0.58) * crest * 0.35;
+
+              float d = distance(vWorld, cameraPosition);
+              float f = smoothstep(uFogNear, uFogFar, d);
+              col = mix(col, uFogColor, f);
+              gl_FragColor = vec4(col, 1.0);
+            }
+          `,
+        })
+      );
+      ocean.position.y = -14;
+      world.add(ocean);
+
+      /* ------------------------------------------------ islas low-poly + palmeras */
+
+      const sandMat = new THREE.MeshStandardMaterial({
+        color: 0xe8d49a,
+        roughness: 0.9,
+        metalness: 0,
+        flatShading: true,
+      });
+      const grassMat = new THREE.MeshStandardMaterial({
+        color: 0x2f7a46,
+        roughness: 0.95,
+        metalness: 0,
+        flatShading: true,
+      });
+      const rockMat = new THREE.MeshStandardMaterial({
+        color: 0x535c58,
+        roughness: 1,
+        flatShading: true,
+      });
+      const trunkMat = new THREE.MeshStandardMaterial({
+        color: 0x6b4a2c,
+        roughness: 1,
+        flatShading: true,
+      });
+      const leafMat = new THREE.MeshStandardMaterial({
+        color: 0x2f8a4d,
+        roughness: 1,
+        flatShading: true,
+      });
+
+      const GEO = {
+        sphere: new THREE.SphereGeometry(1, 12, 8),
+        box: new THREE.BoxGeometry(1, 1, 1),
+        cylinder: new THREE.CylinderGeometry(1, 1, 1, 10),
+        cone: new THREE.ConeGeometry(1, 1, 10),
+        circle: new THREE.CircleGeometry(1, 24),
+        ring: new THREE.RingGeometry(1, 1.25, 28),
+        torus: new THREE.TorusGeometry(1, 0.02, 6, 40),
+        lowSphere: new THREE.SphereGeometry(1, 7, 5),
+      };
+      for (const geometry of Object.values(GEO)) geometry.__shared = true;
+
+      function mesh(geometry, material, x, y, z, sx = 1, sy = 1, sz = 1) {
+        const m = new THREE.Mesh(geometry, material);
+        m.position.set(x, y, z);
+        m.scale.set(sx, sy, sz);
+        return m;
+      }
+
+      const islands = [];
+
+      function makePalm(height) {
+        const palm = new THREE.Group();
+        const trunk = mesh(GEO.cylinder, trunkMat, 0, height * 0.5, 0, 0.16, height, 0.16);
+        trunk.rotation.z = rand(-0.08, 0.08);
+        palm.add(trunk);
+        for (let i = 0; i < 5; i++) {
+          const leaf = mesh(GEO.cone, leafMat, 0, height, 0, 0.5, 2.4, 0.16);
+          leaf.rotation.y = (i / 5) * Math.PI * 2 + rand(-0.2, 0.2);
+          leaf.rotation.z = Math.PI / 2 - 0.18;
+          leaf.position.x = Math.cos(leaf.rotation.y) * 0.85;
+          leaf.position.z = Math.sin(leaf.rotation.y) * 0.85;
+          palm.add(leaf);
+        }
+        const top = mesh(GEO.sphere, leafMat, 0, height, 0, 0.5, 0.35, 0.5);
+        palm.add(top);
+        return palm;
+      }
+
+      function makeIsland(variant) {
+        const group = new THREE.Group();
+        const radius = rand(7, 13);
+
+        const base = mesh(GEO.cylinder, sandMat, 0, -13.8, 0, radius, rand(1.4, 2.4), radius * 0.82);
+        base.rotation.y = rand(0, Math.PI);
+        group.add(base);
+
+        const hill = mesh(GEO.cone, grassMat, rand(-1.2, 1.2), -12.4, rand(-1.2, 1.2), radius * 0.62, rand(3, 5.6), radius * 0.55);
+        hill.rotation.y = rand(0, Math.PI);
+        group.add(hill);
+
+        if (variant % 3 === 0) {
+          group.add(mesh(GEO.cone, rockMat, rand(-3, 3), -11.8, rand(-3, 3), rand(0.8, 1.7), rand(2.2, 3.8), rand(0.8, 1.5)));
+        }
+
+        const palms = 1 + (variant % 3);
+        for (let i = 0; i < palms; i++) {
+          const palm = makePalm(rand(2.6, 4.4));
+          const a = rand(0, Math.PI * 2);
+          const r = rand(0.8, radius * 0.45);
+          palm.position.set(Math.cos(a) * r, -12.1, Math.sin(a) * r);
+          group.add(palm);
+        }
+
+        group.position.set(
+          (variant % 2 === 0 ? 1 : -1) * rand(22, 150),
+          0,
+          rand(-430, -40)
+        );
+        group.rotation.y = rand(0, Math.PI * 2);
+        return group;
+      }
+
+      for (let i = 0; i < 7; i++) {
+        const island = makeIsland(i);
+        world.add(island);
+        islands.push(island);
+      }
+
+      /* -------------------------------------------------------- nubes volumétricas */
+
+      const cloudMat = new THREE.MeshLambertMaterial({
+        color: 0xffffff,
+        emissive: 0xffffff,
+        emissiveIntensity: 0.28,
+        transparent: true,
+        opacity: 0.68,
+        depthWrite: false,
+        flatShading: true,
+      });
+
+      const clouds = [];
+
+      function makeCloud() {
+        const group = new THREE.Group();
+        const puffs = 3 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < puffs; i++) {
+          const size = rand(2.6, 6.4);
+          const puff = mesh(
+            GEO.lowSphere,
+            cloudMat,
+            rand(-6, 6),
+            rand(-1.2, 1.6),
+            rand(-4, 4),
+            size,
+            size * rand(0.4, 0.68),
+            size * rand(0.7, 1.1)
+          );
+          group.add(puff);
+        }
+        group.position.set(rand(-180, 180), rand(14, 38), rand(-430, -80));
+        group.userData.speed = rand(6, 13);
+        group.userData.baseX = group.position.x;
+        return group;
+      }
+
+      for (let i = 0; i < 11; i++) {
+        const cloud = makeCloud();
+        world.add(cloud);
+        clouds.push(cloud);
+      }
+
+      /* ----------------------------------------------------------- líneas de velocidad */
+
+      const STREAK_COUNT = 44;
+      const streakPositions = new Float32Array(STREAK_COUNT * 6);
+      const streaks = [];
+
+      for (let i = 0; i < STREAK_COUNT; i++) {
+        const side = Math.random() > 0.5 ? 1 : -1;
+        streaks.push({
+          x: side * rand(12, 80),
+          y: rand(-8, 28),
+          z: rand(-280, 20),
+          len: rand(5, 13),
+          speed: rand(34, 62),
+        });
+      }
+
+      const streakGeo = new THREE.BufferGeometry();
+      streakGeo.setAttribute('position', new THREE.BufferAttribute(streakPositions, 3));
+      const streakLines = new THREE.LineSegments(
+        streakGeo,
+        new THREE.LineBasicMaterial({
+          color: 0xdff8ff,
+          transparent: true,
+          opacity: 0.22,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          toneMapped: false,
+        })
+      );
+      streakLines.frustumCulled = false;
+      world.add(streakLines);
+
+      /* ------------------------------------------------------------ línea de defensa */
+
+      function makeDefenseTexture() {
+        const { canvas, ctx } = makeCanvas(1024, 512);
+        ctx.clearRect(0, 0, 1024, 512);
+
+        const glow = ctx.createLinearGradient(0, 0, 0, 512);
+        glow.addColorStop(0, 'rgba(255,70,100,0)');
+        glow.addColorStop(0.45, 'rgba(255,70,100,0.10)');
+        glow.addColorStop(0.5, 'rgba(255,90,120,0.30)');
+        glow.addColorStop(0.55, 'rgba(255,70,100,0.10)');
+        glow.addColorStop(1, 'rgba(255,70,100,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, 1024, 512);
+
+        ctx.strokeStyle = 'rgba(255,110,135,0.55)';
+        ctx.lineWidth = 2;
+        for (let x = 0; x <= 1024; x += 64) {
+          ctx.beginPath();
+          ctx.moveTo(x, 40);
+          ctx.lineTo(x, 472);
+          ctx.stroke();
+        }
+        for (let y = 96; y <= 448; y += 64) {
+          ctx.beginPath();
+          ctx.moveTo(24, y);
+          ctx.lineTo(1000, y);
+          ctx.stroke();
+        }
+
+        ctx.strokeStyle = 'rgba(255,150,170,0.95)';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(0, 256);
+        ctx.lineTo(1024, 256);
+        ctx.stroke();
+
+        return canvasTexture(canvas);
+      }
+
+      const defenseGate = new THREE.Mesh(
+        new THREE.PlaneGeometry(40, 14),
+        new THREE.MeshBasicMaterial({
+          map: makeDefenseTexture(),
+          transparent: true,
+          opacity: 0.14,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+          toneMapped: false,
+        })
+      );
+      defenseGate.position.set(0, CFG.eyeHeight + 0.5, CFG.defenseZ);
+      scene.add(defenseGate);
+
+      const defenseGlow = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+          map: makeGlowTexture('rgba(255,70,100,0.8)', 'rgba(255,40,80,0)'),
+          transparent: true,
+          opacity: 0.08,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          toneMapped: false,
+        })
+      );
+      defenseGlow.scale.setScalar(30);
+      defenseGlow.position.copy(defenseGate.position);
+      scene.add(defenseGlow);
+
+      /* ==========================================================================
+         4. TEXTURAS Y EFECTOS 3D
+         ========================================================================== */
+
+      function makeCanvas(w, h) {
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        return { canvas, ctx: canvas.getContext('2d') };
+      }
+
+      function canvasTexture(canvas, repeat = false) {
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = 4;
+        if (repeat) {
+          tex.wrapS = THREE.RepeatWrapping;
+          tex.wrapT = THREE.RepeatWrapping;
+        }
+        return tex;
+      }
+
+      const SHARED_TEX = new Map();
+
+      function sharedTexture(key, factory) {
+        if (!SHARED_TEX.has(key)) {
+          const tex = factory();
+          tex.__shared = true;
+          SHARED_TEX.set(key, tex);
+        }
+        return SHARED_TEX.get(key);
+      }
+
+      function makeGlowTexture(inner = 'rgba(255,255,255,1)', outer = 'rgba(255,180,80,0)') {
+        const { canvas, ctx } = makeCanvas(128, 128);
+        const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+        grad.addColorStop(0, inner);
+        grad.addColorStop(0.4, inner.replace(/[\d.]+\)$/, '0.55)'));
+        grad.addColorStop(1, outer);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 128, 128);
+        return canvasTexture(canvas);
+      }
+
+      function makeFireTexture() {
+        const { canvas, ctx } = makeCanvas(128, 128);
+        const grad = ctx.createRadialGradient(64, 64, 2, 64, 64, 62);
+        grad.addColorStop(0, 'rgba(255,252,230,1)');
+        grad.addColorStop(0.22, 'rgba(255,226,140,0.98)');
+        grad.addColorStop(0.5, 'rgba(255,150,55,0.9)');
+        grad.addColorStop(0.78, 'rgba(225,70,25,0.45)');
+        grad.addColorStop(1, 'rgba(180,30,10,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 128, 128);
+        return canvasTexture(canvas);
+      }
+
+      function makeSmokeTexture() {
+        const { canvas, ctx } = makeCanvas(128, 128);
+        const grad = ctx.createRadialGradient(64, 64, 4, 64, 64, 62);
+        grad.addColorStop(0, 'rgba(120,130,140,0.65)');
+        grad.addColorStop(0.55, 'rgba(90,100,110,0.35)');
+        grad.addColorStop(1, 'rgba(60,70,80,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 128, 128);
+        return canvasTexture(canvas);
+      }
+
+      function makeDamageTexture() {
+        const { canvas, ctx } = makeCanvas(512, 512);
+        const grad = ctx.createRadialGradient(256, 256, 70, 256, 256, 300);
+        grad.addColorStop(0, 'rgba(255,30,60,0)');
+        grad.addColorStop(0.55, 'rgba(255,30,60,0.08)');
+        grad.addColorStop(0.84, 'rgba(255,20,50,0.38)');
+        grad.addColorStop(1, 'rgba(190,0,25,0.82)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 512, 512);
+
+        ctx.strokeStyle = 'rgba(255,120,140,0.18)';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 9; i++) {
+          ctx.beginPath();
+          ctx.moveTo(256 + rand(-40, 40), 256 + rand(-40, 40));
+          ctx.lineTo(rand(0, 512), rand(0, 512));
+          ctx.stroke();
+        }
+        return canvasTexture(canvas);
+      }
+
+      function makeGlassTexture() {
+        const { canvas, ctx } = makeCanvas(512, 256);
+        ctx.clearRect(0, 0, 512, 256);
+        const grad = ctx.createLinearGradient(0, 0, 512, 256);
+        grad.addColorStop(0, 'rgba(190,240,255,0.16)');
+        grad.addColorStop(0.35, 'rgba(190,240,255,0.02)');
+        grad.addColorStop(0.55, 'rgba(190,240,255,0)');
+        grad.addColorStop(1, 'rgba(190,240,255,0.07)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 512, 256);
+        return canvasTexture(canvas);
+      }
+
+      function makePropBlurTexture() {
+        const { canvas, ctx } = makeCanvas(256, 256);
+        ctx.translate(128, 128);
+        const disc = ctx.createRadialGradient(0, 0, 8, 0, 0, 120);
+        disc.addColorStop(0, 'rgba(220,250,255,0.25)');
+        disc.addColorStop(0.7, 'rgba(180,230,255,0.06)');
+        disc.addColorStop(1, 'rgba(180,230,255,0)');
+        ctx.fillStyle = disc;
+        ctx.beginPath();
+        ctx.arc(0, 0, 120, 0, Math.PI * 2);
+        ctx.fill();
+
+        for (let i = 0; i < 3; i++) {
+          ctx.save();
+          ctx.rotate((i / 3) * Math.PI * 2);
+          const blade = ctx.createLinearGradient(0, -18, 0, -112);
+          blade.addColorStop(0, 'rgba(240,255,255,0.4)');
+          blade.addColorStop(1, 'rgba(240,255,255,0.02)');
+          ctx.fillStyle = blade;
+          ctx.beginPath();
+          ctx.ellipse(0, -64, 12, 50, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        return canvasTexture(canvas);
+      }
+
+      const TEX = {
+        glow: () => sharedTexture('glow', () => makeGlowTexture()),
+        fire: () => sharedTexture('fire', () => makeGlowTexture('rgba(255,238,170,1)', 'rgba(255,80,20,0)')),
+        fireball: () => sharedTexture('fireball', makeFireTexture),
+        smoke: () => sharedTexture('smoke', makeSmokeTexture),
+        damage: () => sharedTexture('damage', makeDamageTexture),
+        glass: () => sharedTexture('glass', makeGlassTexture),
+        prop: () => sharedTexture('prop', makePropBlurTexture),
+      };
+
+      function disposeSoft(root) {
+        root.traverse((obj) => {
+          if (obj.geometry && !obj.geometry.__shared) obj.geometry.dispose();
+          if (!obj.material) return;
+          const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
+          for (const material of materials) {
+            for (const key of ['map', 'alphaMap']) {
+              if (material[key] && !material[key].__shared) material[key].dispose();
+            }
+            material.dispose();
+          }
+        });
+      }
+
+      /** Partículas 3D con billboard, gravedad y desvanecido. */
+      class Fx {
+        constructor(layer) {
+          this.layer = layer;
+          this.items = [];
+        }
+
+        add(object, opts = {}) {
+          const base = object.scale.clone();
+          this.layer.add(object);
+          this.items.push({
+            object,
+            base,
+            t: -(opts.delay || 0),
+            life: opts.life ?? 0.6,
+            vx: opts.vx || 0,
+            vy: opts.vy || 0,
+            vz: opts.vz || 0,
+            gravity: opts.gravity || 0,
+            drag: opts.drag || 0,
+            scale0: opts.scale0 ?? 1,
+            scale1: opts.scale1 ?? 1,
+            opacity0: opts.opacity0 ?? 1,
+            opacity1: opts.opacity1 ?? 0,
+            spin: opts.spin || 0,
+          });
+        }
+
+        sprite(texture, size, color, position, additive = true) {
+          const sprite = new THREE.Sprite(
+            new THREE.SpriteMaterial({
+              map: texture,
+              color,
+              transparent: true,
+              blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+              depthWrite: false,
+              toneMapped: false,
+            })
+          );
+          sprite.scale.setScalar(size);
+          sprite.position.copy(position);
+          return sprite;
+        }
+
+        update(dt) {
+          for (let i = this.items.length - 1; i >= 0; i--) {
+            const p = this.items[i];
+            p.t += dt;
+            if (p.t < 0) {
+              p.object.visible = false;
+              continue;
+            }
+            p.object.visible = true;
+
+            const k = Math.min(1, p.t / p.life);
+            const e = 1 - Math.pow(1 - k, 3);
+
+            p.object.position.x += p.vx * dt;
+            p.object.position.y += p.vy * dt;
+            p.object.position.z += p.vz * dt;
+            p.vy -= p.gravity * dt;
+            if (p.drag) {
+              const d = Math.max(0, 1 - p.drag * dt);
+              p.vx *= d;
+              p.vy *= d;
+              p.vz *= d;
+            }
+
+            const s = p.scale0 + (p.scale1 - p.scale0) * e;
+            p.object.scale.set(p.base.x * s, p.base.y * s, p.base.z * s);
+            if (p.object.material) {
+              p.object.material.opacity = p.opacity0 + (p.opacity1 - p.opacity0) * e;
+            }
+            p.object.rotation.z += p.spin * dt;
+
+            if (k >= 1) {
+              this.layer.remove(p.object);
+              disposeSoft(p.object);
+              this.items.splice(i, 1);
+            }
+          }
+        }
+
+        clear() {
+          for (const item of this.items) {
+            this.layer.remove(item.object);
+            disposeSoft(item.object);
+          }
+          this.items = [];
+        }
+      }
+
+      const fx = new Fx(world);
+
+      function explode(position, scale = 1, tone = 0xffd479) {
+        const base = position.clone();
+
+        fx.add(fx.sprite(TEX.glow(), 1.2 * scale, 0xfff3c4, base), {
+          life: 0.16,
+          scale0: 0.3,
+          scale1: 1.9,
+          opacity0: 1,
+          opacity1: 0,
+        });
+
+        fx.add(fx.sprite(TEX.fireball(), 1.0 * scale, 0xff8a2b, base, false), {
+          life: 0.5,
+          scale0: 0.3,
+          scale1: 1.7,
+          opacity0: 1,
+          opacity1: 0,
+        });
+
+        for (let i = 0; i < 14; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const up = rand(-0.8, 1.2);
+          const dir = V3(Math.cos(angle), up, Math.sin(angle)).normalize();
+          const p = base.clone().addScaledVector(dir, rand(0, 0.5 * scale));
+          fx.add(
+            fx.sprite(TEX.fireball(), rand(0.18, 0.42) * scale, [0xffe58a, 0xffb03a, 0xff6a2a, 0xff3d1f][i % 4], p, false),
+            {
+              life: rand(0.32, 0.7),
+              vx: dir.x * rand(4, 14) * scale,
+              vy: dir.y * rand(3, 12) * scale,
+              vz: dir.z * rand(4, 14) * scale,
+              drag: 2.1,
+              gravity: 2,
+              scale0: 1,
+              scale1: 0.2,
+              opacity0: 0.95,
+              opacity1: 0,
+            }
+          );
+        }
+
+        for (let i = 0; i < 6; i++) {
+          const p = base.clone().add(V3(rand(-0.6, 0.6), rand(-0.4, 0.6), rand(-0.6, 0.6)).multiplyScalar(scale));
+          fx.add(fx.sprite(TEX.smoke(), rand(0.5, 0.9) * scale, 0x8494a6, p, false), {
+            life: rand(0.8, 1.5),
+            vx: rand(-1.5, 1.5),
+            vy: rand(1, 3),
+            vz: rand(-1.5, 1.5),
+            drag: 0.7,
+            scale0: 0.45,
+            scale1: 2.4,
+            opacity0: 0.5,
+            opacity1: 0,
+          });
+        }
+
+        const ring = new THREE.Mesh(
+          new THREE.RingGeometry(0.6, 1, 40),
+          new THREE.MeshBasicMaterial({
+            color: tone,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            toneMapped: false,
+          })
+        );
+        ring.position.copy(base);
+        fx.add(ring, {
+          life: 0.5,
+          scale0: 0.3 * scale,
+          scale1: 4.2 * scale,
+          opacity0: 0.6,
+          opacity1: 0,
+        });
+
+        for (let i = 0; i < 8; i++) {
+          const debris = mesh(GEO.box, new THREE.MeshBasicMaterial({ color: 0x2a1a14, toneMapped: false }), base.x, base.y, base.z, 0.1, 0.1, 0.36);
+          debris.rotation.set(rand(0, 6), rand(0, 6), rand(0, 6));
+          fx.add(debris, {
+            life: rand(0.5, 0.9),
+            vx: rand(-9, 9),
+            vy: rand(2, 12),
+            vz: rand(-9, 9),
+            gravity: 18,
+            spin: rand(-12, 12),
+            scale0: 1,
+            scale1: 0.6,
+            opacity0: 1,
+            opacity1: 0,
+          });
+        }
+      }
+
+      function makeTextSprite(text, opts = {}) {
+        const size = opts.size || 56;
+        const weight = opts.weight || 800;
+        const color = opts.color || '#f5fbff';
+        const bg = opts.bg || 'rgba(7,14,24,0.82)';
+        const tone = opts.tone || null;
+        const pad = opts.pad ?? 24;
+
+        const { canvas, ctx } = makeCanvas(4, 4);
+        const font = `${weight} ${size}px ${FONT}`;
+        ctx.font = font;
+
+        const lines = wrapLines(ctx, text, opts.maxWidth || 760, opts.maxLines || 3);
+        let maxW = 0;
+        for (const line of lines) maxW = Math.max(maxW, ctx.measureText(line).width);
+
+        const W = Math.ceil(maxW + pad * 2 + (tone ? 14 : 0));
+        const H = Math.ceil(lines.length * size * 1.25 + pad * 2);
+        const surface = makeCanvas(W, H);
+        const draw = surface.ctx;
+
+        draw.font = font;
+        draw.textAlign = 'center';
+        draw.textBaseline = 'middle';
+
+        if (bg) {
+          draw.fillStyle = bg;
+          roundRect(draw, 1, 1, W - 2, H - 2, Math.min(22, H * 0.16));
+          draw.fill();
+        }
+        if (tone) {
+          draw.strokeStyle = tone;
+          draw.globalAlpha = 0.85;
+          draw.lineWidth = 3;
+          roundRect(draw, 2, 2, W - 4, H - 4, Math.min(22, H * 0.16));
+          draw.stroke();
+          draw.globalAlpha = 1;
+        }
+
+        draw.fillStyle = color;
+        lines.forEach((line, i) => {
+          draw.fillText(line, W / 2 + (tone ? 4 : 0), pad + size * 1.25 * (i + 0.5));
+        });
+
+        const tex = canvasTexture(surface.canvas);
+        const sprite = new THREE.Sprite(
+          new THREE.SpriteMaterial({
+            map: tex,
+            transparent: true,
+            depthWrite: false,
+            toneMapped: false,
+          })
+        );
+        sprite.userData.aspect = W / H;
+        sprite.userData.isLabel = true;
+        sprite.raycast = () => {};
+        return sprite;
+      }
+
+      function popup(text, position, color = '#7dffcf') {
+        const sprite = makeTextSprite(text, {
+          size: 54,
+          color,
+          bg: 'rgba(4,10,18,0.55)',
+          pad: 18,
+        });
+        sprite.scale.set(2.2 * sprite.userData.aspect, 2.2, 1);
+        sprite.position.copy(position);
+        fx.add(sprite, {
+          life: 1,
+          vy: 5,
+          drag: 1.2,
+          scale0: 1,
+          scale1: 1.1,
+          opacity0: 1,
+          opacity1: 0,
+        });
+      }
+
+      /* ==========================================================================
+         5. CABINA 3D, HUD DIEGÉTICO Y HÉLICE
+         ========================================================================== */
+
+      const cockpitRoot = new THREE.Group();
+      const cockpitTilt = new THREE.Group();
+      const cockpit = new THREE.Group();
+      cockpitRoot.add(cockpitTilt);
+      cockpitTilt.add(cockpit);
+      scene.add(cockpitRoot);
+
+      const metal = new THREE.MeshStandardMaterial({ color: 0x1b2733, metalness: 0.72, roughness: 0.44 });
+      const metalLight = new THREE.MeshStandardMaterial({ color: 0x2d4053, metalness: 0.65, roughness: 0.5 });
+      const darkMat = new THREE.MeshStandardMaterial({ color: 0x0b121a, metalness: 0.5, roughness: 0.65 });
+      const rubber = new THREE.MeshStandardMaterial({ color: 0x14181d, metalness: 0.1, roughness: 0.95 });
+      const glassMat = new THREE.MeshStandardMaterial({
+        color: 0x0d2a3a,
+        metalness: 0.2,
+        roughness: 0.15,
+        transparent: true,
+        opacity: 0.8,
+      });
+      const accentMat = new THREE.MeshStandardMaterial({
+        color: 0x4de2c5,
+        emissive: 0x4de2c5,
+        emissiveIntensity: 1.4,
+        toneMapped: false,
+      });
+      const amberMat = new THREE.MeshStandardMaterial({
+        color: 0xffb454,
+        emissive: 0xffb454,
+        emissiveIntensity: 1.2,
+        toneMapped: false,
+      });
+
+      function box(w, h, d, material, x, y, z, rx = 0, ry = 0, rz = 0) {
+        const m = mesh(GEO.box, material, x, y, z, w, h, d);
+        m.rotation.set(rx, ry, rz);
+        return m;
+      }
+
+      function cylinder(radius, height, material, x, y, z, rx = 0, ry = 0, rz = 0, segments = 12) {
+        const geo = new THREE.CylinderGeometry(radius, radius, height, segments);
+        const m = new THREE.Mesh(geo, material);
+        m.position.set(x, y, z);
+        m.rotation.set(rx, ry, rz);
+        return m;
+      }
+
+      /* ------------------------------------------------------------ estructura */
+
+      // Panel de instrumentos inclinado bajo la vista. Se ha bajado y
+      // ensanchado para dejar más aire a los aviones.
+      cockpit.add(box(1.8, 0.28, 0.18, metal, 0, -0.46, -0.68, -0.28, 0, 0));
+      cockpit.add(box(1.55, 0.1, 0.34, darkMat, 0, -0.61, -0.52, -0.18, 0, 0));
+
+      // Consolas laterales.
+      cockpit.add(box(0.3, 0.13, 0.68, metal, -0.9, -0.44, -0.3, 0, 0.08, 0));
+      cockpit.add(box(0.3, 0.13, 0.68, metal, 0.9, -0.44, -0.3, 0, -0.08, 0));
+
+      // Marco de la carlinga, más ancho para ampliar el campo de visión.
+      cockpit.add(box(0.07, 1.02, 0.075, metalLight, -0.9, 0.05, -0.58, 0, 0, 0.12));
+      cockpit.add(box(0.07, 1.02, 0.075, metalLight, 0.9, 0.05, -0.58, 0, 0, -0.12));
+      cockpit.add(box(1.86, 0.065, 0.08, metalLight, 0, 0.62, -0.52));
+      cockpit.add(box(0.075, 0.075, 1.05, metal, -0.98, 0.32, -0.12));
+      cockpit.add(box(0.075, 0.075, 1.05, metal, 0.98, 0.32, -0.12));
+      cockpit.add(box(1.96, 0.06, 0.2, metalLight, 0, -0.12, -0.72));
+
+      // Arco superior de la cabina.
+      const arch = new THREE.Mesh(new THREE.TorusGeometry(0.97, 0.032, 6, 36, Math.PI), metalLight);
+      arch.position.set(0, 0, -0.38);
+      cockpit.add(arch);
+
+      // Morro y alas.
+      cockpit.add(cylinder(0.42, 1.3, metal, 0, -0.82, -1.35, Math.PI / 2, 0, 0, 14));
+      cockpit.add(box(1.15, 0.06, 0.6, metalLight, -1.2, -0.55, -0.78, 0, 0.08, 0.12));
+      cockpit.add(box(1.15, 0.06, 0.6, metalLight, 1.2, -0.55, -0.78, 0, -0.08, -0.12));
+      cockpit.add(cylinder(0.045, 0.55, darkMat, -0.56, -0.36, -0.78, Math.PI / 2, 0, 0, 8));
+      cockpit.add(cylinder(0.045, 0.55, darkMat, 0.56, -0.36, -0.78, Math.PI / 2, 0, 0, 8));
+
+      // Marco del panel de instrumentos (el HUD va delante, no dentro).
+      cockpit.add(box(0.72, 0.26, 0.05, darkMat, 0, -0.27, -0.58, -0.1, 0, 0));
+
+      // Cúpula de cristal.
+      const canopyGlass = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.4, 1.7),
+        new THREE.MeshBasicMaterial({
+          map: TEX.glass(),
+          transparent: true,
+          opacity: 0.45,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+          toneMapped: false,
+        })
+      );
+      canopyGlass.position.set(0, 0.16, -1.0);
+      canopyGlass.renderOrder = 10;
+      cockpit.add(canopyGlass);
+
+      // Destello rojo sobre el cristal al recibir daño.
+      const damageGlass = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.5, 1.85),
+        new THREE.MeshBasicMaterial({
+          map: TEX.damage(),
+          transparent: true,
+          opacity: 0,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          toneMapped: false,
+        })
+      );
+      damageGlass.position.set(0, 0.16, -0.98);
+      damageGlass.renderOrder = 11;
+      cockpit.add(damageGlass);
+
+      // Hélice y disco de desenfoque.
+      const propGroup = new THREE.Group();
+      propGroup.position.set(0, -0.62, -1.7);
+      cockpit.add(propGroup);
+
+      const propBlur = new THREE.Mesh(
+        new THREE.CircleGeometry(0.5, 32),
+        new THREE.MeshBasicMaterial({
+          map: TEX.prop(),
+          transparent: true,
+          opacity: 0.45,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          side: THREE.DoubleSide,
+          toneMapped: false,
+        })
+      );
+      propBlur.position.z = -0.02;
+      propGroup.add(propBlur);
+
+      for (let i = 0; i < 3; i++) {
+        const blade = box(0.045, 0.5, 0.022, metalLight, 0, 0.24, 0, 0, 0, (i / 3) * Math.PI * 2);
+        blade.position.applyAxisAngle(V3(0, 0, 1), (i / 3) * Math.PI * 2);
+        propGroup.add(blade);
+      }
+
+      const spinner = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 12), metalLight);
+      spinner.rotation.x = -Math.PI / 2;
+      spinner.position.z = -0.1;
+      propGroup.add(spinner);
+
+      // Luces de instrumentos.
+      for (let i = 0; i < 7; i++) {
+        const lamp = mesh(GEO.sphere, i % 3 === 0 ? amberMat : accentMat, -0.6 + i * 0.2, -0.3, -0.63, 0.018, 0.018, 0.01);
+        cockpit.add(lamp);
+      }
+
+      const cockpitLight = new THREE.PointLight(0x7fe9ff, 1.1, 2.6, 2);
+      cockpitLight.position.set(0, 0.14, -0.28);
+      cockpit.add(cockpitLight);
+
+      /* --------------------------------------------------------------- HUD */
+
+      class CockpitHUD {
+        constructor() {
+          this.canvas = document.createElement('canvas');
+          this.canvas.width = 1200;
+          this.canvas.height = 300;
+          this.ctx = this.canvas.getContext('2d');
+          this.texture = canvasTexture(this.canvas);
+          this.texture.anisotropy = 8;
+
+          this.data = {
+            score: 0,
+            hp: 100,
+            wave: 0,
+            waveTotal: 0,
+            sector: '—',
+            stage: '—',
+            question: '',
+            feedback: '',
+            tone: '#4de2c5',
+          };
+          this.key = '';
+
+          this.mesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.64, 0.16),
+            new THREE.MeshBasicMaterial({
+              map: this.texture,
+              transparent: true,
+              depthWrite: false,
+              toneMapped: false,
+            })
+          );
+          this.mesh.position.set(0, -0.25, -0.545);
+          this.mesh.rotation.x = -0.08;
+          this.mesh.renderOrder = 12;
+          cockpit.add(this.mesh);
+          this.draw();
+        }
+
+        set(data) {
+          this.data = { ...this.data, ...data };
+          const key = `${LANG}|${JSON.stringify(this.data)}`;
+          if (key === this.key) return;
+          this.key = key;
+          this.draw();
+        }
+
+        draw() {
+          const { ctx } = this;
+          const W = this.canvas.width;
+          const H = this.canvas.height;
+          const d = this.data;
+          const tone = d.tone || '#4de2c5';
+          const hp = clamp(d.hp, 0, 100);
+
+          ctx.clearRect(0, 0, W, H);
+
+          const bg = ctx.createLinearGradient(0, 0, 0, H);
+          bg.addColorStop(0, 'rgba(3,10,16,0.97)');
+          bg.addColorStop(1, 'rgba(4,14,22,0.9)');
+          ctx.fillStyle = bg;
+          roundRect(ctx, 0, 0, W, H, 20);
+          ctx.fill();
+
+          ctx.strokeStyle = tone;
+          ctx.globalAlpha = 0.7;
+          ctx.lineWidth = 3;
+          roundRect(ctx, 2, 2, W - 4, H - 4, 18);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+
+          // Scanlines sutiles.
+          ctx.fillStyle = 'rgba(120,230,255,0.035)';
+          for (let y = 6; y < H; y += 6) ctx.fillRect(8, y, W - 16, 1);
+
+          // Cabecera: SCORE / HP / OLEADA.
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = '#6f8199';
+          ctx.font = `800 17px ${FONT}`;
+          ctx.fillText(t('score'), 32, 32);
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = `800 48px ${MONO}`;
+          ctx.shadowColor = 'rgba(77,226,197,0.45)';
+          ctx.shadowBlur = 10;
+          ctx.fillText(String(d.score).padStart(6, '0'), 30, 76);
+          ctx.shadowBlur = 0;
+
+          ctx.fillStyle = '#6f8199';
+          ctx.font = `800 17px ${FONT}`;
+          ctx.fillText(t('hp'), 436, 32);
+
+          ctx.fillStyle = 'rgba(255,255,255,0.12)';
+          roundRect(ctx, 436, 56, 300, 20, 9);
+          ctx.fill();
+          const hpColor = hp > 60 ? '#4de2c5' : hp > 30 ? '#ffb454' : '#ff5d73';
+          ctx.fillStyle = hpColor;
+          ctx.shadowColor = hpColor;
+          ctx.shadowBlur = 12;
+          roundRect(ctx, 436, 56, Math.max(2, (300 * hp) / 100), 20, 9);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          ctx.fillStyle = hpColor;
+          ctx.font = `800 28px ${MONO}`;
+          ctx.textAlign = 'right';
+          ctx.fillText(String(Math.round(hp)), 806, 68);
+
+          ctx.textAlign = 'left';
+          ctx.fillStyle = '#6f8199';
+          ctx.font = `800 17px ${FONT}`;
+          ctx.fillText(t('wave'), 900, 32);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = `800 36px ${MONO}`;
+          ctx.fillText(d.waveTotal ? `${d.wave}/${d.waveTotal}` : '—', 898, 74);
+
+          ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(26, 108);
+          ctx.lineTo(W - 26, 108);
+          ctx.stroke();
+
+          // En el panel solo va el mensaje de estado: la pregunta ya está
+          // arriba, en el HUD de la cabina.
+          ctx.textAlign = 'left';
+          ctx.fillStyle = tone;
+          ctx.font = `600 30px ${FONT}`;
+          const message = d.feedback || d.question || '';
+          const fLines = wrapLines(ctx, message, W - 64, 2);
+          fLines.forEach((line, i) => {
+            ctx.fillText(line, 32, 154 + i * 38);
+          });
+
+          // Pie: sector, etapa y progreso.
+          ctx.fillStyle = '#6f8199';
+          ctx.font = `700 17px ${FONT}`;
+          ctx.fillText(`${t('sector')} ${String(d.stage).toUpperCase()} · ${d.sector.toUpperCase()}`, 32, H - 22);
+
+          ctx.textAlign = 'right';
+          const startX = W - 30 - Math.max(0, d.waveTotal - 1) * 22;
+          for (let i = 0; i < d.waveTotal; i++) {
+            const x = startX + i * 22;
+            ctx.fillStyle = i < d.wave ? tone : 'rgba(255,255,255,0.16)';
+            roundRect(ctx, x, H - 34, 15, 13, 3);
+            ctx.fill();
+          }
+
+          this.texture.needsUpdate = true;
+        }
+      }
+
+      const hud = new CockpitHUD();
+
+      /**
+       * HUD superior anclado a la cabeza: la pregunta siempre queda arriba,
+       * tanto en escritorio como dentro de WebXR. El panel de instrumentos
+       * conserva los marcadores y la explicación.
+       */
+      class QuestionHUD {
+        constructor() {
+          this.canvas = document.createElement('canvas');
+          this.canvas.width = 1280;
+          this.canvas.height = 320;
+          this.ctx = this.canvas.getContext('2d');
+          this.texture = canvasTexture(this.canvas);
+          this.texture.anisotropy = 8;
+
+          this.data = {
+            show: false,
+            label: '',
+            question: '',
+            feedback: '',
+            tone: '#4de2c5',
+          };
+          this.key = '';
+
+          this.mesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.3, 0.325),
+            new THREE.MeshBasicMaterial({
+              map: this.texture,
+              transparent: true,
+              depthTest: false,
+              depthWrite: false,
+              toneMapped: false,
+            })
+          );
+          this.mesh.renderOrder = 999;
+          this.mesh.raycast = () => {};
+
+          this.group = new THREE.Group();
+          this.group.add(this.mesh);
+          this.group.position.set(0, 0.35, -0.95);
+          this.group.visible = false;
+          camera.add(this.group);
+          this.draw();
+        }
+
+        set(data) {
+          this.data = { ...this.data, ...data };
+          const key = `${LANG}|${JSON.stringify(this.data)}`;
+          if (key === this.key) return;
+          this.key = key;
+          this.draw();
+        }
+
+        draw() {
+          const { ctx } = this;
+          const W = this.canvas.width;
+          const H = this.canvas.height;
+          const d = this.data;
+          const tone = d.tone || '#4de2c5';
+
+          this.group.visible = Boolean(d.show && (d.question || d.feedback));
+          if (!this.group.visible) return;
+
+          ctx.clearRect(0, 0, W, H);
+
+          const bg = ctx.createLinearGradient(0, 0, 0, H);
+          bg.addColorStop(0, 'rgba(3,10,16,0.94)');
+          bg.addColorStop(1, 'rgba(4,14,22,0.86)');
+          ctx.fillStyle = bg;
+          roundRect(ctx, 0, 0, W, H, 22);
+          ctx.fill();
+
+          ctx.strokeStyle = tone;
+          ctx.globalAlpha = 0.7;
+          ctx.lineWidth = 3;
+          roundRect(ctx, 2, 2, W - 4, H - 4, 20);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+
+          ctx.fillStyle = tone;
+          roundRect(ctx, 0, 0, 12, H, 6);
+          ctx.fill();
+
+          ctx.fillStyle = 'rgba(120,230,255,0.04)';
+          for (let y = 6; y < H; y += 6) ctx.fillRect(14, y, W - 28, 1);
+
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+
+          ctx.fillStyle = tone;
+          ctx.font = `800 20px ${FONT}`;
+          ctx.fillText(String(d.label || '').toUpperCase(), 34, 32);
+
+          ctx.fillStyle = '#f2f8fd';
+          ctx.font = `700 38px ${FONT}`;
+          const qLines = wrapLines(ctx, d.question, W - 68, 2);
+          qLines.forEach((line, i) => {
+            ctx.fillText(line, 32, 84 + i * 44);
+          });
+
+          if (d.feedback) {
+            ctx.fillStyle = tone;
+            ctx.font = `600 24px ${FONT}`;
+            const fLines = wrapLines(ctx, d.feedback, W - 68, 2);
+            fLines.forEach((line, i) => {
+              ctx.fillText(line, 32, 208 + i * 31);
+            });
+          }
+
+          this.texture.needsUpdate = true;
+        }
+      }
+
+      const questionHud = new QuestionHUD();
+
+      function exitToHome() {
+        window.location.href = './index.html';
+      }
+
+      const exitButton = makePanelButton('✕ SALIR', {
+        w: 0.26,
+        h: 0.075,
+        tone: '#ffb454',
+      });
+      exitButton.position.set(0.7, 0.33, -0.95);
+      exitButton.visible = false;
+      exitButton.renderOrder = 1000;
+      if (exitButton.material) exitButton.material.depthTest = false;
+      exitButton.userData.onSelect = exitToHome;
+      camera.add(exitButton);
+
+      function fitHudToViewport() {
+        if (renderer.xr.isPresenting) {
+          questionHud.group.scale.setScalar(1);
+          questionHud.group.position.set(0, 0.38, -1.15);
+          exitButton.scale.setScalar(1);
+          exitButton.position.set(0.78, 0.36, -1.15);
+          return;
+        }
+        questionHud.group.position.set(0, 0.35, -0.95);
+        const aspect = window.innerWidth / window.innerHeight;
+        const scale = clamp(aspect / 1.5, 0.55, 1);
+        questionHud.group.scale.setScalar(scale);
+        exitButton.scale.setScalar(scale);
+        exitButton.position.set(0.7 * scale, 0.33 * scale, -0.95);
+      }
+
+      fitHudToViewport();
+
+      /* ==========================================================================
+         6. AVIONES ENEMIGOS PROCEDURALES (3 TIPOS)
+         ========================================================================== */
+
+      const enemies = [];
+      const bullets = [];
+      const flak = [];
+
+      const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xffe9a3, toneMapped: false });
+      const bulletGlowMaterial = new THREE.SpriteMaterial({
+        map: TEX.glow(),
+        color: 0xffd479,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        toneMapped: false,
+      });
+      const flakMaterial = new THREE.MeshBasicMaterial({ color: 0xff7a3a, toneMapped: false });
+      const flakGlowMaterial = new THREE.SpriteMaterial({
+        map: TEX.glow(),
+        color: 0xff5420,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        toneMapped: false,
+      });
+
+      function planeMaterial(hex, emissive = 0x000000, intensity = 0) {
+        return new THREE.MeshStandardMaterial({
+          color: hex,
+          emissive,
+          emissiveIntensity: intensity,
+          metalness: 0.35,
+          roughness: 0.55,
+          flatShading: true,
+        });
+      }
+
+      function bodyParts(color) {
+        return {
+          body: planeMaterial(color),
+          wing: planeMaterial(new THREE.Color(color).multiplyScalar(0.68).getHex()),
+          dark: planeMaterial(0x151a20),
+          accent: planeMaterial(0xffe9a8, 0xffb454, 0.45),
+        };
+      }
+
+      function addPropeller(group, z, material) {
+        const prop = new THREE.Group();
+        prop.position.z = z;
+        const disc = new THREE.Mesh(
+          new THREE.CircleGeometry(1, 20),
+          new THREE.MeshBasicMaterial({
+            color: 0xbfe8ff,
+            transparent: true,
+            opacity: 0.16,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            side: THREE.DoubleSide,
+            toneMapped: false,
+          })
+        );
+        disc.scale.setScalar(0.8);
+        prop.add(disc);
+        for (let i = 0; i < 2; i++) {
+          const blade = box(0.1, 1.5, 0.05, material, 0, 0, 0);
+          blade.rotation.z = (i / 2) * Math.PI;
+          blade.position.y = 0;
+          prop.add(blade);
+        }
+        group.add(prop);
+        return prop;
+      }
+
+      function buildFighter(color) {
+        const pal = bodyParts(color);
+        const group = new THREE.Group();
+
+        group.add(cylinder(0.38, 3.3, pal.body, 0, 0, 0, Math.PI / 2, 0, 0, 10));
+        const nose = new THREE.Mesh(new THREE.ConeGeometry(0.38, 0.95, 10), pal.body);
+        nose.rotation.x = Math.PI / 2;
+        nose.position.z = 2.1;
+        group.add(nose);
+
+        const wingL = box(3.5, 0.14, 1.5, pal.wing, -1.85, -0.02, 0.1, 0, 0.2, 0.06);
+        const wingR = box(3.5, 0.14, 1.5, pal.wing, 1.85, -0.02, 0.1, 0, -0.2, -0.06);
+        group.add(wingL, wingR);
+
+        group.add(box(0.14, 1.15, 1.05, pal.wing, 0, 0.62, -1.28));
+        group.add(box(2.7, 0.12, 0.8, pal.wing, 0, 0.02, -1.5));
+
+        const canopy = mesh(GEO.sphere, glassMat, 0, 0.4, 0.42, 0.42, 0.4, 0.95);
+        group.add(canopy);
+
+        group.add(mesh(GEO.sphere, accentMat, -3.5, 0.02, 0.1, 0.09, 0.09, 0.09));
+        group.add(mesh(GEO.sphere, new THREE.MeshBasicMaterial({ color: 0x6dffb8, toneMapped: false }), 3.5, 0.02, 0.1, 0.09, 0.09, 0.09));
+
+        const prop = addPropeller(group, 2.5, pal.dark);
+        group.userData.prop = prop;
+        return group;
+      }
+
+      function buildInterceptor(color) {
+        const pal = bodyParts(color);
+        const group = new THREE.Group();
+
+        group.add(cylinder(0.32, 4.0, pal.body, 0, 0, 0, Math.PI / 2, 0, 0, 10));
+        const nose = new THREE.Mesh(new THREE.ConeGeometry(0.3, 1.3, 10), pal.body);
+        nose.rotation.x = Math.PI / 2;
+        nose.position.z = 2.55;
+        group.add(nose);
+
+        group.add(box(3.2, 0.11, 2.2, pal.wing, -1.55, 0, -0.2, 0, 0.42, 0.04));
+        group.add(box(3.2, 0.11, 2.2, pal.wing, 1.55, 0, -0.2, 0, -0.42, -0.04));
+        group.add(box(1.7, 0.1, 0.8, pal.wing, 0, 0, 1.8));
+
+        group.add(box(0.11, 1.0, 0.9, pal.wing, -1.0, 0.5, -1.5, 0, 0, 0.2));
+        group.add(box(0.11, 1.0, 0.9, pal.wing, 1.0, 0.5, -1.5, 0, 0, -0.2));
+
+        const canopy = mesh(GEO.sphere, glassMat, 0, 0.36, 0.75, 0.3, 0.32, 0.9);
+        group.add(canopy);
+
+        group.add(cylinder(0.18, 1.2, pal.dark, -0.8, -0.2, -1.5, Math.PI / 2, 0, 0, 8));
+        group.add(cylinder(0.18, 1.2, pal.dark, 0.8, -0.2, -1.5, Math.PI / 2, 0, 0, 8));
+
+        const glowL = new THREE.Sprite(
+          new THREE.SpriteMaterial({
+            map: TEX.glow(),
+            color: 0x67e8f9,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            toneMapped: false,
+          })
+        );
+        glowL.scale.setScalar(1.2);
+        glowL.position.set(-0.8, -0.2, -2.1);
+        group.add(glowL);
+
+        const glowR = glowL.clone();
+        glowR.position.x = 0.8;
+        group.add(glowR);
+
+        const prop = addPropeller(group, 3.05, pal.dark);
+        prop.scale.setScalar(0.75);
+        group.userData.prop = prop;
+        return group;
+      }
+
+      function buildBomber(color) {
+        const pal = bodyParts(color);
+        const group = new THREE.Group();
+
+        group.add(cylinder(1.0, 7.4, pal.body, 0, 0, 0, Math.PI / 2, 0, 0, 12));
+        const nose = new THREE.Mesh(new THREE.ConeGeometry(1.0, 1.4, 12), pal.body);
+        nose.rotation.x = Math.PI / 2;
+        nose.position.z = 4.3;
+        group.add(nose);
+
+        group.add(box(8.2, 0.28, 2.9, pal.wing, -4.1, 0.05, -0.2, 0, 0.06, 0.03));
+        group.add(box(8.2, 0.28, 2.9, pal.wing, 4.1, 0.05, -0.2, 0, -0.06, -0.03));
+        group.add(box(0.3, 1.8, 1.5, pal.wing, -2.2, 0.95, -2.8, 0, 0.2, 0));
+        group.add(box(0.3, 1.8, 1.5, pal.wing, 2.2, 0.95, -2.8, 0, -0.2, 0));
+
+        for (const x of [-5.4, 0, 5.4]) {
+          group.add(cylinder(0.46, 2.4, pal.dark, x, -0.26, 0.1, Math.PI / 2, 0, 0, 10));
+          const prop = addPropeller(group, 1.35, pal.dark);
+          prop.position.x = x;
+          prop.position.y = -0.26;
+          prop.scale.setScalar(0.62);
+        }
+
+        const canopy = mesh(GEO.sphere, glassMat, 0, 0.95, 3.5, 0.7, 0.45, 0.8);
+        group.add(canopy);
+
+        group.add(mesh(GEO.sphere, pal.dark, 0, -0.55, 3.9, 0.45, 0.35, 0.4));
+        group.add(mesh(GEO.sphere, accentMat, 0, 0.6, 0.8, 0.14, 0.14, 0.14));
+
+        group.userData.bomberProps = group.children.filter((child) => child.isGroup);
+        return group;
+      }
+
+      function createEnemy(type, labelText, correct, tone) {
+        const group =
+          type === 'bomber'
+            ? buildBomber(tone)
+            : type === 'interceptor'
+              ? buildInterceptor(tone)
+              : buildFighter(tone);
+
+        const label = makeTextSprite(labelText, {
+          size: 54,
+          color: '#f5fbff',
+          bg: 'rgba(4,12,20,0.88)',
+          tone,
+          maxWidth: 420,
+          maxLines: 2,
+          pad: 26,
+        });
+        label.position.set(0, type === 'bomber' ? 5.2 : 3.1, 0);
+        label.renderOrder = 15;
+        label.userData.text = labelText;
+        group.add(label);
+
+        const radius = type === 'bomber' ? 7.4 : 4.3;
+        const hitFlash = new THREE.Mesh(
+          new THREE.SphereGeometry(Math.min(radius * 0.7, 4.5), 10, 8),
+          new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            toneMapped: false,
+          })
+        );
+        hitFlash.visible = false;
+        group.add(hitFlash);
+
+        const enemy = {
+          group,
+          label,
+          hitFlash,
+          type,
+          correct,
+          tone,
+          scale: 1.4,
+          hp: type === 'bomber' ? 3 : 1,
+          maxHp: type === 'bomber' ? 3 : 1,
+          alive: true,
+          x0: 0,
+          y0: 0,
+          y: 0,
+          z: CFG.spawnZ,
+          speed: type === 'bomber' ? 5.2 : type === 'interceptor' ? 6.2 : 6.6,
+          phase: Math.random() * Math.PI * 2,
+          radius,
+          crossed: false,
+          fireTimer: rand(2.4, 4.2),
+          flash: 0,
+        };
+
+        group.scale.setScalar(enemy.scale);
+        return enemy;
+      }
+
+      function removeEnemy(enemy) {
+        const index = enemies.indexOf(enemy);
+        if (index >= 0) enemies.splice(index, 1);
+        world.remove(enemy.group);
+        disposeSoft(enemy.group);
+      }
+
+      function clearEnemies(showExplosions = false) {
+        for (const enemy of enemies) {
+          if (showExplosions && enemy.alive) {
+            explode(enemy.group.position, enemy.type === 'bomber' ? 2 : 1.2, 0xffb454);
+          }
+          world.remove(enemy.group);
+          disposeSoft(enemy.group);
+        }
+        enemies.length = 0;
+      }
+
+      /* ==========================================================================
+         7. HUD DE PUNTUACIÓN Y PANELES HOLOGRÁFICOS
+         ========================================================================== */
+
+      const game = {
+        state: 'menu',
+        mode: 'campaign',
+        sectorIndex: 0,
+        order: [],
+        sectorPos: 0,
+        qIndex: 0,
+        queue: [],
+        current: null,
+        score: 0,
+        hp: CFG.maxHp,
+        combo: 0,
+        sectorsDone: 0,
+        firing: false,
+        cooldown: 0,
+        damage: 0,
+        shake: 0,
+        retryMode: 'campaign',
+        retrySector: 0,
+        retrySectors: SECTORS,
+        sectorSet: SECTORS,
+        moodle: false,
+        hudQuestion: '',
+        hudFeedback: '',
+        hudTone: '#4de2c5',
+        hudLabelKey: 'standby',
+      };
+
+      const save = (() => {
+        try {
+          const raw = JSON.parse(localStorage.getItem(CFG.bestKey) || '{}');
+          return {
+            best: Number(raw.best) || 0,
+            sectors: Math.min(SECTORS.length, Number(raw.sectors) || 0),
+          };
+        } catch {
+          return { best: 0, sectors: 0 };
+        }
+      })();
+
+      function persistSave() {
+        try {
+          localStorage.setItem(CFG.bestKey, JSON.stringify(save));
+        } catch {
+          /* almacenamiento no disponible */
+        }
+      }
+
+      let flowToken = 0;
+
+      function later(ms, fn) {
+        const token = flowToken;
+        setTimeout(() => {
+          if (token === flowToken) fn();
+        }, ms);
+      }
+
+      function cancelFlow() {
+        flowToken += 1;
+      }
+
+      function refreshHud() {
+        const sectors = game.sectorSet && game.sectorSet.length ? game.sectorSet : SECTORS;
+        const sector =
+          game.order.length > 0 ? sectors[game.order[game.sectorPos]] : null;
+        const sectorTone = sector ? sector.tone : '#4de2c5';
+        const question =
+          game.hudQuestion || sectorBrief(sector || sectors[0] || SECTORS[0]);
+        const feedback = game.hudFeedback || '';
+
+        hud.set({
+          score: game.score,
+          hp: Math.max(0, game.hp),
+          wave: game.state === 'menu' ? 0 : Math.min(game.qIndex + 1, game.queue.length || 1),
+          waveTotal: game.queue.length || 0,
+          sector: sector ? sectorTitle(sector) : '—',
+          stage:
+            game.state === 'menu'
+              ? 'STANDBY'
+              : `${game.sectorPos + 1}/${game.order.length}`,
+          question,
+          feedback,
+          tone: sectorTone,
+        });
+
+        questionHud.set({
+          show: game.state !== 'menu',
+          label: t(game.hudLabelKey || 'tagQuestion'),
+          question,
+          feedback,
+          tone: game.hudTone || sectorTone,
+        });
+      }
+
+      /* --------------------------------------------------------- panel holográfico */
+
+      const panelAnchor = new THREE.Group();
+      scene.add(panelAnchor);
+
+      let menuPanel = null;
+      let resultPanel = null;
+      let panelButtons = [];
+
+      function drawPanelBase(ctx, tone) {
+        const W = 1024;
+        const H = 660;
+        ctx.clearRect(0, 0, W, H);
+
+        const bg = ctx.createLinearGradient(0, 0, W, H);
+        bg.addColorStop(0, 'rgba(3,14,24,0.93)');
+        bg.addColorStop(0.55, 'rgba(5,20,32,0.86)');
+        bg.addColorStop(1, 'rgba(3,10,18,0.93)');
+        ctx.fillStyle = bg;
+        roundRect(ctx, 4, 4, W - 8, H - 8, 26);
+        ctx.fill();
+
+        ctx.strokeStyle = tone;
+        ctx.globalAlpha = 0.7;
+        ctx.lineWidth = 3;
+        roundRect(ctx, 6, 6, W - 12, H - 12, 24);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        // Esquinas de holograma.
+        ctx.strokeStyle = tone;
+        ctx.lineWidth = 4;
+        const corner = 38;
+        const inset = 26;
+        for (const [x, y, sx, sy] of [
+          [inset, inset, 1, 1],
+          [W - inset, inset, -1, 1],
+          [inset, H - inset, 1, -1],
+          [W - inset, H - inset, -1, -1],
+        ]) {
+          ctx.beginPath();
+          ctx.moveTo(x + sx * corner, y);
+          ctx.lineTo(x, y);
+          ctx.lineTo(x, y + sy * corner);
+          ctx.stroke();
+        }
+
+        // Scanlines.
+        ctx.fillStyle = 'rgba(120,230,255,0.045)';
+        for (let y = 10; y < H; y += 7) ctx.fillRect(12, y, W - 24, 1);
+
+        // Retícula tenue.
+        ctx.strokeStyle = 'rgba(77,226,197,0.08)';
+        ctx.lineWidth = 1;
+        for (let x = 80; x < W; x += 96) {
+          ctx.beginPath();
+          ctx.moveTo(x, 12);
+          ctx.lineTo(x, H - 12);
+          ctx.stroke();
+        }
+      }
+
+      function makePanelBackdrop(draw, tone) {
+        const { canvas, ctx } = makeCanvas(1024, 660);
+        drawPanelBase(ctx, tone);
+        draw(ctx);
+        const tex = canvasTexture(canvas);
+        const mesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(1.9, 1.225),
+          new THREE.MeshBasicMaterial({
+            map: tex,
+            transparent: true,
+            depthWrite: false,
+            toneMapped: false,
+          })
+        );
+        mesh.renderOrder = 30;
+        mesh.userData.isLabel = true;
+        mesh.raycast = () => {};
+        return mesh;
+      }
+
+      function makePanelButton(label, opts = {}) {
+        const w = opts.w ?? 0.36;
+        const h = opts.h ?? 0.11;
+        const tone = opts.tone ?? '#4de2c5';
+        const primary = Boolean(opts.primary);
+        const W = 512;
+        const H = Math.round((W * h) / w);
+        const { canvas, ctx } = makeCanvas(W, H);
+
+        const bg = ctx.createLinearGradient(0, 0, 0, H);
+        bg.addColorStop(0, primary ? 'rgba(20,70,66,0.96)' : 'rgba(6,20,30,0.94)');
+        bg.addColorStop(1, primary ? 'rgba(8,34,34,0.96)' : 'rgba(4,12,20,0.94)');
+        ctx.fillStyle = bg;
+        roundRect(ctx, 3, 3, W - 6, H - 6, Math.min(20, H * 0.2));
+        ctx.fill();
+
+        ctx.strokeStyle = tone;
+        ctx.lineWidth = primary ? 4 : 2.5;
+        roundRect(ctx, 4, 4, W - 8, H - 8, Math.min(20, H * 0.2));
+        ctx.stroke();
+
+        if (primary) {
+          ctx.globalAlpha = 0.16;
+          ctx.fillStyle = tone;
+          roundRect(ctx, 10, 10, W - 20, H - 20, Math.min(16, H * 0.16));
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+
+        ctx.fillStyle = primary ? '#f4fffd' : '#dff3ff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        fitFont(ctx, label, W - 40, Math.round(H * (primary ? 0.42 : 0.36)), 800);
+        ctx.shadowColor = tone;
+        ctx.shadowBlur = primary ? 16 : 6;
+        ctx.fillText(label, W / 2, H / 2 + 2);
+        ctx.shadowBlur = 0;
+
+        const tex = canvasTexture(canvas);
+        const mesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(w, h),
+          new THREE.MeshBasicMaterial({
+            map: tex,
+            transparent: true,
+            depthWrite: false,
+            toneMapped: false,
+          })
+        );
+        mesh.renderOrder = 31;
+        mesh.userData.baseScale = 1;
+        return mesh;
+      }
+
+      function clearPanelButtons() {
+        for (const button of panelButtons) {
+          if (button.parent) button.parent.remove(button);
+          disposeSoft(button);
+        }
+        panelButtons = [];
+        hoveredButton = null;
+      }
+
+      function disposePanel(panel) {
+        if (!panel) return;
+        if (panel.parent) panel.parent.remove(panel);
+        disposeSoft(panel);
+      }
+
+      function hidePanels() {
+        panelAnchor.visible = false;
+        clearPanelButtons();
+        disposePanel(menuPanel);
+        disposePanel(resultPanel);
+        menuPanel = null;
+        resultPanel = null;
+      }
+
+      function showMenuPanel() {
+        clearPanelButtons();
+        disposePanel(menuPanel);
+        disposePanel(resultPanel);
+        menuPanel = null;
+        resultPanel = null;
+
+        panelAnchor.visible = true;
+        menuPanel = new THREE.Group();
+        panelAnchor.add(menuPanel);
+
+        menuPanel.add(
+          makePanelBackdrop((ctx) => {
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `800 66px ${FONT}`;
+            ctx.shadowColor = 'rgba(77,226,197,0.5)';
+            ctx.shadowBlur = 22;
+            ctx.fillText(t('brand'), 512, 104);
+            ctx.shadowBlur = 0;
+
+            ctx.fillStyle = '#4de2c5';
+            ctx.font = `700 27px ${FONT}`;
+            ctx.fillText(t('subtitle'), 512, 158);
+
+            ctx.fillStyle = '#ffb454';
+            ctx.font = `700 22px ${FONT}`;
+            ctx.fillText(`${t('record')}: ${save.best} PTS · ${save.sectors}/${SECTORS.length}`, 512, 205);
+
+            ctx.fillStyle = '#8296ad';
+            ctx.font = `600 22px ${FONT}`;
+            ctx.fillText(t('practice'), 512, 404);
+
+            ctx.fillStyle = '#8296ad';
+            ctx.font = `600 20px ${FONT}`;
+            ctx.fillText(t('aimHint'), 512, 614);
+
+            ctx.fillStyle = 'rgba(255,180,84,0.85)';
+            ctx.font = `700 18px ${FONT}`;
+            ctx.fillText(LANG === 'eu' ? 'ESKADRÓN WEB · 1945' : 'ESCUADRÓN WEB · 1945', 512, 642);
+          }, '#4de2c5')
+        );
+
+        const play = makePanelButton(t('play'), {
+          w: 0.86,
+          h: 0.17,
+          tone: '#4de2c5',
+          primary: true,
+        });
+        play.position.set(0, 0.06, 0.03);
+        play.userData.onSelect = startCampaign;
+        menuPanel.add(play);
+        panelButtons.push(play);
+
+        SECTORS.forEach((sector, index) => {
+          const button = makePanelButton(`${index + 1} · ${sectorTitle(sector).toUpperCase()}`, {
+            w: 0.315,
+            h: 0.105,
+            tone: sector.tone,
+          });
+          button.position.set((index - 2) * 0.352, -0.27, 0.03);
+          button.userData.onSelect = () => startRun('sector', index, SECTORS);
+          menuPanel.add(button);
+          panelButtons.push(button);
+        });
+
+        const moodle = makePanelButton('MOODLE', {
+          w: 0.46,
+          h: 0.09,
+          tone: '#a78bfa',
+        });
+        moodle.position.set(0, -0.415, 0.03);
+        moodle.userData.onSelect = quickMoodle;
+        menuPanel.add(moodle);
+        panelButtons.push(moodle);
+      }
+
+      function showResultPanel(win) {
+        clearPanelButtons();
+        disposePanel(menuPanel);
+        disposePanel(resultPanel);
+        menuPanel = null;
+        resultPanel = null;
+
+        panelAnchor.visible = true;
+        resultPanel = new THREE.Group();
+        panelAnchor.add(resultPanel);
+
+        const tone = win ? '#4ade80' : '#ff5d73';
+        const title = win
+          ? game.mode === 'moodle'
+            ? `✔ ${t('moodleDone')}`
+            : t('victoryTitle')
+          : t('downTitle');
+        const total = game.mode === 'campaign' ? SECTORS.length : game.order.length || 1;
+
+        resultPanel.add(
+          makePanelBackdrop((ctx) => {
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `800 62px ${FONT}`;
+            ctx.shadowColor = tone;
+            ctx.shadowBlur = 24;
+            ctx.fillText(title, 512, 104);
+            ctx.shadowBlur = 0;
+
+            ctx.fillStyle = tone;
+            ctx.font = `700 24px ${FONT}`;
+            ctx.fillText(
+              win
+                ? game.mode === 'moodle'
+                  ? t('moodleResult', { done: game.sectorsDone, total })
+                  : t('campaignDone')
+                : t('downMessage'),
+              512,
+              158
+            );
+
+            ctx.fillStyle = '#8296ad';
+            ctx.font = `700 20px ${FONT}`;
+            ctx.fillText(t('resultScore'), 380, 240);
+            ctx.fillText(t('record'), 644, 240);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `800 46px ${MONO}`;
+            ctx.fillText(String(game.score).padStart(6, '0'), 380, 292);
+            ctx.fillStyle = '#ffb454';
+            ctx.fillText(String(save.best).padStart(6, '0'), 644, 292);
+
+            ctx.fillStyle = '#8296ad';
+            ctx.font = `700 20px ${FONT}`;
+            ctx.fillText(t('resultSectors'), 512, 356);
+
+            ctx.fillStyle = '#4de2c5';
+            ctx.font = `800 36px ${MONO}`;
+            ctx.fillText(`${game.sectorsDone}/${total}`, 512, 394);
+
+            ctx.fillStyle = '#8296ad';
+            ctx.font = `600 20px ${FONT}`;
+            ctx.fillText(t('aimHint'), 512, 614);
+          }, tone)
+        );
+
+        const retry = makePanelButton(t('retry'), {
+          w: 0.38,
+          h: 0.115,
+          tone: win ? '#4de2c5' : '#ffb454',
+          primary: true,
+        });
+        retry.position.set(-0.22, -0.28, 0.03);
+        retry.userData.onSelect = () =>
+          startRun(game.retryMode, game.retrySector, game.retrySectors);
+        resultPanel.add(retry);
+        panelButtons.push(retry);
+
+        const menu = makePanelButton(t('menu'), {
+          w: 0.32,
+          h: 0.115,
+          tone: '#8296ad',
+        });
+        menu.position.set(0.26, -0.28, 0.03);
+        menu.userData.onSelect = showMenu;
+        resultPanel.add(menu);
+        panelButtons.push(menu);
+        placePanel();
+      }
+
+      function placePanel() {
+        if (renderer.xr.isPresenting) {
+          const head = V3();
+          const dir = V3();
+          camera.getWorldPosition(head);
+          camera.getWorldDirection(dir);
+          dir.y = 0;
+          if (dir.lengthSq() < 0.001) dir.set(0, 0, -1);
+          dir.normalize();
+
+          panelAnchor.position.copy(head).addScaledVector(dir, 2.55);
+          panelAnchor.position.y = head.y + 0.5;
+          panelAnchor.rotation.set(
+            0,
+            Math.atan2(head.x - panelAnchor.position.x, head.z - panelAnchor.position.z),
+            0
+          );
+        } else {
+          panelAnchor.position.set(0, CFG.eyeHeight + 0.5, -2.55);
+          panelAnchor.rotation.set(0, 0, 0);
+        }
+      }
+
+      /* ==========================================================================
+         7b. MOODLE: CONFIGURACIÓN, DESCARGA Y PARTIDA
+         ========================================================================== */
+
+      const MOODLE_KEY = 'lwpd.moodle.v1';
+      const MOODLE_DEFAULTS = {
+        base: 'https://moodle.lhusurbil.eus',
+        key: '',
+        ids: '',
+        quiz: '',
+        api: '',
+      };
+
+      function loadMoodleConfig() {
+        try {
+          const raw = JSON.parse(localStorage.getItem(MOODLE_KEY) || '{}');
+          return {
+            base: String(raw.base || MOODLE_DEFAULTS.base).replace(/\/+$/, ''),
+            key: String(raw.key || ''),
+            ids: String(raw.ids || ''),
+            quiz: String(raw.quiz || ''),
+            api: String(raw.api || ''),
+          };
+        } catch {
+          return { ...MOODLE_DEFAULTS };
+        }
+      }
+
+      function saveMoodleConfig(config) {
+        const clean = {
+          base: String(config.base || MOODLE_DEFAULTS.base)
+            .trim()
+            .replace(/\/+$/, ''),
+          key: String(config.key || '').trim(),
+          ids: String(config.ids || '').trim(),
+          quiz: String(config.quiz || '').trim(),
+          api: String(config.api || '').trim().replace(/\/+$/, ''),
+        };
+        try {
+          localStorage.setItem(MOODLE_KEY, JSON.stringify(clean));
+        } catch {
+          /* sin almacenamiento */
+        }
+        return clean;
+      }
+
+      function parseMoodleIds(text) {
+        return String(text || '')
+          .split(/[^0-9]+/)
+          .map((value) => Number(value))
+          .filter((value) => Number.isInteger(value) && value > 0);
+      }
+
+      function plainText(value) {
+        const text = String(value ?? '');
+        if (!text) return '';
+        try {
+          const doc = new DOMParser().parseFromString(text, 'text/html');
+          return (doc.body.textContent || '').replace(/\s+/g, ' ').trim();
+        } catch {
+          return text
+            .replace(/<[^>]*>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        }
+      }
+
+      function normalizeQuestion(raw) {
+        if (!raw) return null;
+        const text = plainText(raw.q ?? raw.question ?? raw.text);
+        if (!text) return null;
+
+        const options = (raw.options || raw.answers || [])
+          .map((option) =>
+            plainText(typeof option === 'string' ? option : option.text ?? option.answer)
+          )
+          .filter(Boolean);
+
+        if (options.length < 2) return null;
+
+        let correctIndex = Number(raw.correct ?? raw.correctIndex ?? 0);
+        if (!Number.isInteger(correctIndex) || correctIndex < 0) correctIndex = 0;
+        correctIndex = Math.min(correctIndex, options.length - 1);
+
+        const correctText = options[correctIndex];
+        const rest = shuffle(options.filter((_, index) => index !== correctIndex));
+        const chosen = [correctText, ...rest.slice(0, 3)];
+        const mixed = shuffle(chosen);
+
+        return {
+          id: raw.id,
+          q: text,
+          options: mixed,
+          correct: mixed.indexOf(correctText),
+          why: plainText(raw.why ?? raw.feedback) || `Respuesta correcta: ${correctText}`,
+        };
+      }
+
+      async function fetchMoodleQuestions(config) {
+        const quiz = String(config.quiz || '').trim();
+        const ids = parseMoodleIds(config.ids);
+        const api = String(config.api || '').trim().replace(/\/+$/, '');
+
+        let url;
+        if (api) {
+          url = new URL(api.endsWith('/questions') ? api : `${api}/questions`);
+        } else {
+          const base = String(config.base || MOODLE_DEFAULTS.base)
+            .trim()
+            .replace(/\/+$/, '');
+          url = new URL(`${base}/local/lwpd/vrquestions.php`);
+        }
+
+        if (quiz) {
+          url.searchParams.set('quiz', quiz);
+        } else if (ids.length) {
+          url.searchParams.set('ids', ids.join(','));
+        } else {
+          url.searchParams.set('quiz', 'auto');
+        }
+
+        const headers = {};
+        if (config.key) {
+          headers[api ? 'X-Api-Key' : 'X-LWPD-Key'] = config.key;
+        }
+
+        const response = await fetch(url.toString(), { cache: 'no-store', headers });
+        if (!response.ok) throw new Error(`http-${response.status}`);
+
+        const data = await response.json();
+        if (!data || data.error) {
+          throw new Error((data && data.error) || 'invalid-response');
+        }
+
+        const list = (data.questions || []).map(normalizeQuestion).filter(Boolean);
+        if (!list.length) throw new Error('no-questions');
+        return list;
+      }
+
+      const moodleModal = document.getElementById('moodle-modal');
+      const moodleStatus = document.getElementById('moodle-status');
+      const moodleApiInput = document.getElementById('moodle-api');
+      const moodleQuizInput = document.getElementById('moodle-quiz');
+
+      function setMoodleStatus(text, kind = '') {
+        if (!moodleStatus) return;
+        moodleStatus.textContent = text || '';
+        moodleStatus.className = `status${kind ? ` ${kind}` : ''}`;
+      }
+
+      function openMoodle() {
+        const config = loadMoodleConfig();
+        if (moodleApiInput) moodleApiInput.value = config.api;
+        if (moodleQuizInput) moodleQuizInput.value = config.quiz;
+        setMoodleStatus('');
+        if (moodleModal) moodleModal.hidden = false;
+        setTimeout(() => (moodleApiInput?.value ? moodleQuizInput : moodleApiInput)?.focus(), 60);
+      }
+
+      function closeMoodle() {
+        if (moodleModal) moodleModal.hidden = true;
+      }
+
+      function startMoodleGame(questions) {
+        const tones = ['#4de2c5', '#ffb454', '#a78bfa', '#60a5fa', '#f472b6'];
+        const sectors = questions.map((question, index) => ({
+          id: `moodle-${index}`,
+          title: 'Moodle',
+          titleEu: 'Moodle',
+          tone: tones[index % tones.length],
+          brief: t('moodleQuestion', { n: index + 1, total: questions.length }),
+          questions: [question],
+        }));
+
+        closeMoodle();
+        startRun('moodle', 0, sectors);
+      }
+
+      async function runMoodle(play) {
+        const config = saveMoodleConfig({
+          api: moodleApiInput?.value,
+          quiz: moodleQuizInput?.value,
+        });
+
+        if (!config.api) {
+          setMoodleStatus(t('moodleNeedApi'), 'error');
+          return;
+        }
+
+        setMoodleStatus(t('moodleLoading'));
+        try {
+          const questions = await fetchMoodleQuestions(config);
+          setMoodleStatus(t('moodleReady', { n: questions.length }), 'ok');
+          if (!play) return;
+          startMoodleGame(questions);
+        } catch (error) {
+          console.error(error);
+          setMoodleStatus(`${t('moodleError')} (${error.message})`, 'error');
+        }
+      }
+
+      function saveMoodleOnly() {
+        const config = saveMoodleConfig({
+          api: moodleApiInput?.value,
+          quiz: moodleQuizInput?.value,
+        });
+        if (!config.api) {
+          setMoodleStatus(t('moodleNeedApi'), 'error');
+          return;
+        }
+        setMoodleStatus(t('moodleSaved'), 'ok');
+      }
+
+      /**
+       * Inicio rápido desde el menú 3D (también en VR): usa la configuración
+       * guardada, sin abrir el formulario HTML.
+       */
+      async function quickMoodle() {
+        const config = loadMoodleConfig();
+
+        if (!config.api) {
+          if (!renderer.xr.isPresenting) {
+            openMoodle();
+            return;
+          }
+          game.hudLabelKey = 'moodleTitle';
+          game.hudTone = '#a78bfa';
+          game.hudQuestion = t('moodleError');
+          game.hudFeedback = t('moodleHint');
+          refreshHud();
+          return;
+        }
+
+        game.hudLabelKey = 'moodleTitle';
+        game.hudTone = '#a78bfa';
+        game.hudQuestion = t('moodleLoading');
+        game.hudFeedback = '';
+        refreshHud();
+
+        try {
+          const questions = await fetchMoodleQuestions(config);
+          startMoodleGame(questions);
+        } catch (error) {
+          console.error(error);
+          game.hudQuestion = t('moodleError');
+          game.hudFeedback = `${error.message} · ${t('moodleHint')}`;
+          refreshHud();
+        }
+      }
+
+      document.getElementById('btn-moodle')?.addEventListener('click', () => {
+        initAudio();
+        if (game.state !== 'menu') showMenu();
+        openMoodle();
+      });
+
+      document.getElementById('moodle-close')?.addEventListener('click', closeMoodle);
+
+      document.getElementById('moodle-save')?.addEventListener('click', () => {
+        initAudio();
+        saveMoodleOnly();
+      });
+
+      document.getElementById('moodle-test')?.addEventListener('click', () => {
+        runMoodle(false);
+      });
+
+      document.getElementById('moodle-form')?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        initAudio();
+        runMoodle(true);
+      });
+
+      /* ==========================================================================
+         8. AUDIO (WebAudio, sin ficheros externos)
+         ========================================================================== */
+
+      let audio = null;
+
+      function initAudio() {
+        if (!audio) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtx) return;
+          try {
+            audio = new AudioCtx();
+          } catch {
+            return;
+          }
+        }
+        if (audio.state === 'suspended') audio.resume();
+      }
+
+      function beep(freq = 620, dur = 0.08, type = 'sine', gain = 0.04) {
+        if (!audio) return;
+        const osc = audio.createOscillator();
+        const amp = audio.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        amp.gain.setValueAtTime(gain, audio.currentTime);
+        amp.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + dur);
+        osc.connect(amp);
+        amp.connect(audio.destination);
+        osc.start();
+        osc.stop(audio.currentTime + dur);
+      }
+
+      let noiseBuffer = null;
+
+      function noiseBurst(dur = 0.3, gain = 0.06, cutoff = 900, type = 'lowpass') {
+        if (!audio) return;
+        if (!noiseBuffer) {
+          const length = Math.floor(audio.sampleRate * 0.7);
+          noiseBuffer = audio.createBuffer(1, length, audio.sampleRate);
+          const data = noiseBuffer.getChannelData(0);
+          for (let i = 0; i < length; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 1.6);
+          }
+        }
+        const src = audio.createBufferSource();
+        src.buffer = noiseBuffer;
+        const filter = audio.createBiquadFilter();
+        filter.type = type;
+        filter.frequency.value = cutoff;
+        const amp = audio.createGain();
+        amp.gain.setValueAtTime(gain, audio.currentTime);
+        amp.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + dur);
+        src.connect(filter);
+        filter.connect(amp);
+        amp.connect(audio.destination);
+        src.start();
+        src.stop(audio.currentTime + dur);
+      }
+
+      const sfx = {
+        click: () => beep(540, 0.055, 'triangle', 0.035),
+        shot: () => {
+          beep(1350, 0.035, 'square', 0.01);
+          noiseBurst(0.05, 0.012, 3200, 'highpass');
+        },
+        boom: () => {
+          noiseBurst(0.55, 0.085, 650);
+          beep(58, 0.35, 'sine', 0.07);
+        },
+        hit: () => beep(980, 0.06, 'square', 0.02),
+        ok: () => {
+          beep(680, 0.1, 'sine', 0.05);
+          setTimeout(() => beep(1020, 0.14, 'sine', 0.045), 95);
+        },
+        err: () => beep(130, 0.22, 'sawtooth', 0.045),
+        stage: () => {
+          [523, 659, 784].forEach((f, i) =>
+            setTimeout(() => beep(f, 0.16, 'triangle', 0.04), i * 90)
+          );
+        },
+        win: () => {
+          [523, 659, 784, 1046].forEach((f, i) =>
+            setTimeout(() => beep(f, 0.2, 'sine', 0.045), i * 115)
+          );
+        },
+        alarm: () => {
+          beep(220, 0.12, 'square', 0.035);
+          setTimeout(() => beep(180, 0.16, 'square', 0.03), 130);
+        },
+      };
+
+      /* ==========================================================================
+         9. FLUJO DE PARTIDA
+         ========================================================================== */
+
+      function startCampaign() {
+        startRun('campaign', 0);
+      }
+
+      function startRun(mode, sectorIndex, sectors = SECTORS) {
+        cancelFlow();
+        clearEnemies();
+        clearFlak();
+        clearBullets();
+        fx.clear();
+        const runSectors = Array.isArray(sectors) && sectors.length ? sectors : SECTORS;
+        game.sectorSet = runSectors;
+        game.mode = mode === 'sector' ? 'sector' : mode === 'moodle' ? 'moodle' : 'campaign';
+        game.moodle = game.mode === 'moodle';
+        game.sectorIndex = sectorIndex || 0;
+        game.retryMode = game.mode;
+        game.retrySector = game.sectorIndex;
+        game.retrySectors = runSectors;
+        game.order =
+          game.mode === 'sector'
+            ? [clamp(game.sectorIndex, 0, runSectors.length - 1)]
+            : runSectors.map((_, index) => index);
+        game.sectorPos = 0;
+        game.qIndex = 0;
+        game.score = 0;
+        game.hp = CFG.maxHp;
+        game.combo = 0;
+        game.sectorsDone = 0;
+        game.damage = 0;
+        game.shake = 0;
+        game.firing = false;
+        game.current = null;
+        game.queue = [];
+        game.hudTone = runSectors[0]?.tone || '#4de2c5';
+        game.hudLabelKey = 'tagQuestion';
+
+        hidePanels();
+        resetViewForRun();
+        calibrateFlight();
+        document.body.classList.add('playing');
+        document.getElementById('btn-menu').hidden = false;
+        calibrateFlight();
+        beginSector();
+      }
+
+      function beginSector() {
+        cancelFlow();
+        const sectors = game.sectorSet && game.sectorSet.length ? game.sectorSet : SECTORS;
+        const sector = sectors[game.order[game.sectorPos]];
+        game.qIndex = 0;
+        game.combo = 0;
+        game.current = null;
+        game.queue = shuffle(sector.questions)
+          .slice(0, Math.min(CFG.questionsPerSector, sector.questions.length))
+          .map((question) => {
+            const order = shuffle(question.options.map((_, index) => index));
+            return {
+              q: question.q,
+              options: order.map((index) => question.options[index]),
+              correct: order.indexOf(question.correct),
+              why: question.why,
+            };
+          });
+
+        setMood(game.sectorPos);
+        clearEnemies();
+        clearFlak();
+        clearBullets();
+        fx.clear();
+
+        game.state = 'intro';
+        game.hudTone = sector.tone;
+        game.hudLabelKey = game.moodle ? 'moodleTitle' : 'sector';
+        game.hudQuestion = sectorBrief(sector);
+        game.hudFeedback = `${t('sector')} ${game.sectorPos + 1}/${game.order.length} · ${sectorTitle(sector)}`;
+        refreshHud();
+        sfx.stage();
+
+        later(game.moodle ? 1500 : 2400, nextQuestion);
+      }
+
+      function nextQuestion() {
+        if (game.state !== 'intro' && game.state !== 'feedback') return;
+        if (game.qIndex >= game.queue.length) {
+          sectorClear();
+          return;
+        }
+
+        clearEnemies();
+        clearFlak();
+        clearBullets();
+        game.current = game.queue[game.qIndex];
+        game.state = 'playing';
+        game.firing = false;
+        game.hudTone = game.sectorSet[game.order[game.sectorPos]]?.tone || '#4de2c5';
+        game.hudLabelKey = 'tagQuestion';
+        game.hudQuestion = game.current.q;
+        game.hudFeedback = LANG === 'eu' ? 'Bota erantzun zuzena!' : '¡Derriba la respuesta correcta!';
+        refreshHud();
+        spawnWave();
+        calibrateFlight();
+      }
+
+      function spawnWave() {
+        const current = game.current;
+        if (!current) return;
+
+        const xs = [-14, -5.2, 5.2, 14];
+        const types = ['fighter', 'interceptor', 'bomber', 'fighter'];
+        const baseY = cockpitRoot.position.y + 1.15;
+
+        current.options.forEach((option, index) => {
+          const type = types[index % types.length];
+          const tone = OPTION_TONES[index % OPTION_TONES.length];
+          const enemy = createEnemy(type, option, current.correct === index, tone);
+
+          enemy.x0 = xs[index] ?? rand(-12, 12);
+          enemy.y0 = baseY + (index % 2 === 0 ? -0.7 : 1.1) + rand(-0.25, 0.25);
+          enemy.y = enemy.y0;
+          enemy.z = CFG.spawnZ - index * 3.6;
+          enemy.label.position.y =
+            (type === 'bomber' ? 5.2 : 2.9) + (index % 2 === 0 ? 0 : 1.8);
+          enemy.speed *= 1 + game.sectorPos * 0.035;
+          enemy.group.position.set(enemy.x0, enemy.y, enemy.z);
+          enemy.group.rotation.y = rand(-0.06, 0.06);
+
+          world.add(enemy.group);
+          enemies.push(enemy);
+        });
+      }
+
+      function hitEnemy(enemy, point) {
+        if (!enemy.alive || game.state !== 'playing') return;
+
+        if (!enemy.correct) {
+          failShot(
+            t('wrongKill'),
+            `${t('correctWas')} «${game.current.options[game.current.correct]}».`
+          );
+          return;
+        }
+
+        enemy.hp -= 1;
+        enemy.flash = 0.12;
+        enemy.hitFlash.visible = true;
+        enemy.hitFlash.material.opacity = 0.7;
+        fx.add(
+          fx.sprite(TEX.glow(), 1.4, 0xfff2c0, point),
+          { life: 0.16, scale0: 0.3, scale1: 1.2, opacity0: 1, opacity1: 0 }
+        );
+        sfx.hit();
+        pulseController(aim.controller || xr.right, 0.35, 45);
+
+        if (enemy.hp > 0) {
+          game.hudFeedback = t('hitBomber');
+          refreshHud();
+          return;
+        }
+
+        enemy.alive = false;
+        const position = enemy.group.position.clone();
+        removeEnemy(enemy);
+
+        explode(position, enemy.type === 'bomber' ? 4.2 : 2.4, 0xffd479);
+        game.combo += 1;
+        const gain = 100 + (game.combo - 1) * 25;
+        game.score += gain;
+        game.qIndex += 1;
+        game.state = 'feedback';
+        game.firing = false;
+
+        popup(`+${gain}`, position.clone().add(V3(0, 2, 0)), '#7dffcf');
+        game.hudTone = '#4ade80';
+        game.hudLabelKey = 'tagCorrect';
+        game.hudFeedback = `${t('correctKill')} ${game.current.why}  +${gain} PTS`;
+        refreshHud();
+
+        clearEnemies(true);
+        clearFlak();
+        sfx.ok();
+        sfx.boom();
+        pulseController(xr.right, 0.9, 120);
+
+        later(1750, () => {
+          if (game.qIndex >= game.queue.length) sectorClear();
+          else nextQuestion();
+        });
+      }
+
+      function failShot(title, detail) {
+        if (game.state !== 'playing') return;
+        game.state = 'feedback';
+        game.firing = false;
+        game.combo = 0;
+        game.hp -= CFG.errorDamage;
+        game.damage = 1;
+        game.shake = 1;
+
+        game.hudTone = '#ff5d73';
+        game.hudLabelKey = 'tagFail';
+        game.hudFeedback = `${title} ${detail} ${game.current.why}`;
+        refreshHud();
+        sfx.err();
+        sfx.alarm();
+        sfx.boom();
+        pulseController(xr.left, 0.9, 180);
+        pulseController(xr.right, 0.9, 180);
+
+        clearEnemies(true);
+        clearFlak();
+        clearBullets();
+
+        if (game.hp <= 0) {
+          later(1400, gameOver);
+        } else {
+          later(2500, () => {
+            if (game.hp <= 0) gameOver();
+            else nextQuestion();
+          });
+        }
+      }
+
+      function missAnswer() {
+        if (game.state !== 'playing') return;
+        failShot(
+          t('escaped'),
+          `${t('wasShort')} «${game.current.options[game.current.correct]}».`
+        );
+      }
+
+      function damagePlayer(amount, message) {
+        if (game.state !== 'playing') return;
+        game.hp -= amount;
+        game.damage = 1;
+        game.shake = 0.8;
+        game.hudTone = '#ff5d73';
+        game.hudLabelKey = 'tagFail';
+        game.hudFeedback = message;
+        refreshHud();
+        sfx.err();
+        pulseController(xr.left, 0.75, 130);
+        pulseController(xr.right, 0.75, 130);
+        if (game.hp <= 0) {
+          game.state = 'feedback';
+          game.firing = false;
+          clearEnemies(true);
+          clearFlak();
+          later(1200, gameOver);
+        }
+      }
+
+      function sectorClear() {
+        if (game.state === 'clear' || game.state === 'victory') return;
+        game.state = 'clear';
+        game.firing = false;
+        game.score += 250;
+        game.hp = Math.min(CFG.maxHp, game.hp + 30);
+        game.sectorsDone += 1;
+
+        if (game.mode === 'campaign') {
+          save.sectors = Math.max(save.sectors, game.sectorPos + 1);
+          persistSave();
+        }
+
+        game.hudTone = '#4ade80';
+        game.hudLabelKey = 'stageClear';
+        game.hudQuestion = t('stageClear');
+        game.hudFeedback = t('newSector', { n: game.sectorPos + 1 });
+        refreshHud();
+        sfx.win();
+        clearEnemies();
+        clearFlak();
+        clearBullets();
+
+        later(2400, () => {
+          if (game.sectorPos + 1 >= game.order.length) victory();
+          else {
+            game.sectorPos += 1;
+            beginSector();
+          }
+        });
+      }
+
+      function gameOver() {
+        if (game.state === 'gameover') return;
+        game.state = 'gameover';
+        game.firing = false;
+        clearEnemies();
+        clearFlak();
+        clearBullets();
+        fx.clear();
+
+        if (game.score > save.best) {
+          save.best = game.score;
+          persistSave();
+        }
+
+        game.hudTone = '#ff5d73';
+        game.hudLabelKey = 'downTitle';
+        game.hudQuestion = t('downTitle');
+        game.hudFeedback = `${t('resultScore')}: ${game.score} · ${t('record')}: ${save.best}`;
+        refreshHud();
+        showResultPanel(false);
+        sfx.err();
+        document.body.classList.remove('playing');
+        document.getElementById('btn-menu').hidden = false;
+      }
+
+      function victory() {
+        if (game.state === 'victory') return;
+        game.state = 'victory';
+        game.firing = false;
+        clearEnemies();
+        clearFlak();
+        clearBullets();
+        fx.clear();
+
+        if (game.score > save.best) {
+          save.best = game.score;
+          persistSave();
+        }
+
+        game.hudTone = '#4ade80';
+        game.hudLabelKey = game.moodle ? 'moodleDone' : 'victoryTitle';
+        game.hudQuestion = game.moodle ? t('moodleDone') : t('victoryTitle');
+        game.hudFeedback =
+          game.mode === 'campaign'
+            ? t('campaignDone')
+            : game.mode === 'moodle'
+              ? t('moodleMessage', {
+                  done: game.sectorsDone,
+                  total: game.order.length,
+                  score: game.score,
+                })
+              : t('practiceDone');
+        refreshHud();
+        showResultPanel(true);
+        sfx.win();
+        document.body.classList.remove('playing');
+        document.getElementById('btn-menu').hidden = false;
+      }
+
+      function showMenu() {
+        cancelFlow();
+        game.state = 'menu';
+        game.firing = false;
+        game.queue = [];
+        game.current = null;
+        game.qIndex = 0;
+        game.sectorSet = SECTORS;
+        game.order = [];
+        game.moodle = false;
+        clearEnemies();
+        clearFlak();
+        clearBullets();
+        fx.clear();
+        game.damage = 0;
+        game.shake = 0;
+        game.hudTone = '#4de2c5';
+        game.hudLabelKey = 'standby';
+        game.hudQuestion = t('menuBody');
+        game.hudFeedback = `${t('record')}: ${save.best} PTS`;
+        refreshHud();
+
+        document.body.classList.remove('playing');
+        document.getElementById('btn-menu').hidden = true;
+        if (document.pointerLockElement) document.exitPointerLock();
+
+        resetViewForRun();
+        showMenuPanel();
+        placePanel();
+        setMood(0);
+        calibrateFlight();
+      }
+
+      /* ==========================================================================
+         10. MUNDO EN MOVIMIENTO, VUELO Y CÁMARA
+         ========================================================================== */
+
+      const look = { yaw: 0, pitch: -0.03 };
+
+      function applyLook() {
+        camera.rotation.set(look.pitch, look.yaw, 0, 'YXZ');
+      }
+
+      function resetLook() {
+        look.yaw = 0;
+        look.pitch = -0.03;
+        camera.position.set(0, CFG.eyeHeight, 0);
+        applyLook();
+        cockpitRoot.position.set(0, CFG.eyeHeight, 0);
+        cockpitRoot.rotation.set(0, 0, 0);
+        cockpitTilt.position.set(0, 0, 0);
+        cockpitTilt.rotation.set(0, 0, 0);
+      }
+
+      /**
+       * Reinicia la vista sin "teletransportar" la cabina cuando el jugador
+       * ya está dentro de una sesión WebXR: su cabeza manda.
+       */
+      function resetViewForRun() {
+        flight.inputX = 0;
+        flight.inputY = 0;
+        flight.rawX = 0;
+        flight.rawY = 0;
+        flight.bank = 0;
+        cockpitTilt.rotation.set(0, 0, 0);
+        if (renderer.xr.isPresenting) {
+          calibrateFlight();
+        } else {
+          resetLook();
+        }
+      }
+
+      function setMood(index) {
+        const mood = MOODS[index % MOODS.length];
+        scene.fog.color.set(mood.fog);
+        scene.background.set(mood.fog);
+        scene.fog.near = 65;
+        scene.fog.far = 245;
+        skyUniforms.uTop.value.set(mood.top);
+        skyUniforms.uHorizon.value.set(mood.horizon);
+        skyUniforms.uSun.value.set(mood.sun);
+        oceanUniforms.uDeep.value.set(mood.deep);
+        oceanUniforms.uShallow.value.set(mood.shallow);
+        oceanUniforms.uFogColor.value.set(mood.fog);
+        oceanUniforms.uFogNear.value = 65;
+        oceanUniforms.uFogFar.value = 245;
+        sunLight.color.set(mood.light);
+        hemi.color.set(mood.hemi);
+        hemi.groundColor.set(mood.ground);
+        sunSprite.material.color.set(mood.sun);
+        cloudMat.color.set(mood.cloud);
+      }
+
+      function updateWorld(dt, time) {
+        oceanUniforms.uTime.value = time;
+
+        for (const island of islands) {
+          island.position.z += dt * 16;
+          if (island.position.z > 70) {
+            island.position.z -= 520;
+            island.position.x = (Math.random() > 0.5 ? 1 : -1) * rand(22, 150);
+            island.rotation.y = rand(0, Math.PI * 2);
+          }
+        }
+
+        for (const cloud of clouds) {
+          cloud.position.z += dt * cloud.userData.speed;
+          cloud.position.x =
+            cloud.userData.baseX + Math.sin(time * 0.04 + cloud.position.z * 0.01) * 6;
+          if (cloud.position.z > 70) {
+            cloud.position.z -= 470;
+            cloud.position.x = rand(-180, 180);
+            cloud.userData.baseX = cloud.position.x;
+            cloud.position.y = rand(9, 34);
+          }
+        }
+
+        // Estelas de velocidad.
+        const array = streakGeo.attributes.position.array;
+        for (let i = 0; i < STREAK_COUNT; i++) {
+          const s = streaks[i];
+          s.z += s.speed * dt;
+          if (s.z > 30) {
+            s.z = rand(-300, -180);
+            s.x = (Math.random() > 0.5 ? 1 : -1) * rand(12, 80);
+            s.y = rand(-8, 28);
+            s.len = rand(5, 13);
+          }
+          array[i * 6] = s.x;
+          array[i * 6 + 1] = s.y;
+          array[i * 6 + 2] = s.z;
+          array[i * 6 + 3] = s.x;
+          array[i * 6 + 4] = s.y;
+          array[i * 6 + 5] = s.z + s.len;
+        }
+        streakGeo.attributes.position.needsUpdate = true;
+
+        defenseGate.material.opacity = 0.11 + Math.sin(time * 2.6) * 0.035;
+        defenseGate.scale.setScalar(1 + Math.sin(time * 1.7) * 0.006);
+        defenseGate.position.y = cockpitRoot.position.y + 0.5;
+        defenseGlow.material.opacity = 0.06 + Math.sin(time * 2.2) * 0.02;
+        defenseGlow.position.y = defenseGate.position.y;
+        const gateVisible =
+          game.state === 'playing' || game.state === 'intro' || game.state === 'feedback' || game.state === 'clear';
+        defenseGate.visible = gateVisible;
+        defenseGlow.visible = gateVisible;
+      }
+
+      /* --------------------------------------------------------------- vuelo */
+
+      const flight = {
+        neutral: null,
+        inputX: 0,
+        inputY: 0,
+        rawX: 0,
+        rawY: 0,
+        bank: 0,
+      };
+
+      const keys = new Set();
+
+      function flightController() {
+        return xr.left || xr.right || xr.controllers[0] || null;
+      }
+
+      function calibrateFlight() {
+        const controller = xr.left;
+        if (!controller || !renderer.xr.isPresenting) {
+          flight.neutral = null;
+          return;
+        }
+        const point = controller.getWorldPosition(V3());
+        cockpitRoot.updateMatrixWorld(true);
+        flight.neutral = cockpitRoot.worldToLocal(point);
+      }
+
+      function readControllerInput(dt) {
+        const steer = xr.left;
+        const padSource = steer || xr.right || xr.controllers[0] || null;
+        let rawX = 0;
+        let rawY = 0;
+
+        if (renderer.xr.isPresenting) {
+          // La mano izquierda actúa como palanca virtual (posición relativa).
+          if (steer) {
+            const point = cockpitRoot.worldToLocal(steer.getWorldPosition(V3()));
+            if (!flight.neutral) flight.neutral = point.clone();
+            const dx = (point.x - flight.neutral.x) / 0.32;
+            const dy = (point.y - flight.neutral.y) / 0.24;
+            rawX = clamp(dx, -1, 1);
+            rawY = clamp(dy, -1, 1);
+          }
+
+          // El joystick refuerza el control (o lo sustituye si no hay mando izquierdo).
+          const axes = padSource?.userData.inputSource?.gamepad?.axes;
+          if (axes && axes.length >= 2) {
+            const ax = axes.length >= 4 ? axes[2] : axes[0];
+            const ay = axes.length >= 4 ? axes[3] : axes[1];
+            if (Math.abs(ax) > 0.16) rawX = clamp(rawX + ax, -1, 1);
+            if (Math.abs(ay) > 0.16) rawY = clamp(rawY - ay, -1, 1);
+          }
+        } else {
+          const left = keys.has('a') || keys.has('arrowleft') ? 1 : 0;
+          const right = keys.has('d') || keys.has('arrowright') ? 1 : 0;
+          const up = keys.has('w') || keys.has('arrowup') ? 1 : 0;
+          const down = keys.has('s') || keys.has('arrowdown') ? 1 : 0;
+          rawX = right - left;
+          rawY = up - down;
+        }
+
+        const dead = 0.06;
+        if (Math.abs(rawX) < dead) rawX = 0;
+        if (Math.abs(rawY) < dead) rawY = 0;
+
+        flight.rawX = rawX;
+        flight.rawY = rawY;
+        flight.inputX = damp(flight.inputX, rawX, 7, dt);
+        flight.inputY = damp(flight.inputY, rawY, 7, dt);
+      }
+
+      function updateFlight(dt) {
+        readControllerInput(dt);
+
+        const targetX = -flight.inputX * CFG.flightRangeX;
+        const targetY = -flight.inputY * CFG.flightRangeY;
+
+        world.position.x = damp(world.position.x, targetX, 4.5, dt);
+        world.position.y = damp(world.position.y, targetY, 4.5, dt);
+
+        flight.bank = damp(flight.bank, -flight.inputX * 0.18, 5, dt);
+        const shakeAmount = game.shake;
+        cockpitTilt.rotation.z =
+          flight.bank + (Math.random() - 0.5) * shakeAmount * 0.05;
+        cockpitTilt.rotation.x =
+          (Math.random() - 0.5) * shakeAmount * 0.035 - flight.inputY * 0.02;
+
+        if (game.shake > 0) {
+          game.shake = Math.max(0, game.shake - dt * 2.6);
+        }
+      }
+
+      function updateCockpit(dt, time) {
+        propGroup.rotation.z -= dt * (game.state === 'playing' ? 38 : 16);
+        propBlur.rotation.z += dt * 2.4;
+
+        if (game.damage > 0) {
+          game.damage = Math.max(0, game.damage - dt * 1.25);
+        }
+        damageGlass.material.opacity = game.damage * 0.8;
+
+        // La cámara NUNCA se inclina con el avión: solo la cabina.
+        // Esto evita el mareo y mantiene el horizonte estable.
+      }
+
+      /* ==========================================================================
+         11. ARMAS, PROYECTILES Y COLISIONES
+         ========================================================================== */
+
+      const raycaster = new THREE.Raycaster();
+
+      function aimRay() {
+        const origin = V3();
+        const direction = V3();
+
+        if (renderer.xr.isPresenting) {
+          const controller = xr.right || xr.left || xr.controllers[0];
+          if (controller) {
+            controller.getWorldPosition(origin);
+            const quat = new THREE.Quaternion();
+            controller.getWorldQuaternion(quat);
+            direction.set(0, 0, -1).applyQuaternion(quat).normalize();
+            return { origin, direction, controller };
+          }
+          camera.getWorldPosition(origin);
+          camera.getWorldDirection(direction);
+          return { origin, direction, controller: null };
+        }
+
+        camera.getWorldPosition(origin);
+        camera.getWorldDirection(direction);
+        origin.addScaledVector(direction, 0.85);
+        return { origin, direction, controller: null };
+      }
+
+      function segmentSphere(a, b, center, radius) {
+        const ab = b.clone().sub(a);
+        const lengthSq = ab.lengthSq();
+        let t = 0;
+        if (lengthSq > 0.000001) {
+          t = clamp(center.clone().sub(a).dot(ab) / lengthSq, 0, 1);
+        }
+        const closest = a.clone().addScaledVector(ab, t);
+        return closest.distanceToSquared(center) <= radius * radius;
+      }
+
+      function tryFire() {
+        if (game.state !== 'playing') return;
+        if (game.cooldown > 0) return;
+
+        const aim = aimRay();
+        game.cooldown = CFG.fireCooldown;
+
+        const originLocal = world.worldToLocal(aim.origin.clone());
+        const offset = V3(
+          (Math.random() - 0.5) * 0.5,
+          (Math.random() - 0.5) * 0.5,
+          (Math.random() - 0.5) * 0.2
+        );
+        const start = originLocal.clone().addScaledVector(aim.direction, 0.25).add(offset);
+
+        const bullet = new THREE.Mesh(GEO.sphere, bulletMaterial);
+        bullet.position.copy(start);
+        bullet.scale.set(0.045, 0.045, 0.75);
+        bullet.quaternion.setFromUnitVectors(V3(0, 0, 1), aim.direction.clone().normalize());
+        world.add(bullet);
+
+        const glow = new THREE.Sprite(bulletGlowMaterial);
+        glow.scale.setScalar(0.7);
+        bullet.add(glow);
+
+        bullets.push({
+          mesh: bullet,
+          velocity: aim.direction.clone().multiplyScalar(CFG.bulletSpeed),
+          life: 2,
+        });
+
+        const flash = fx.sprite(TEX.glow(), 0.9, 0xfff2b0, start);
+        fx.add(flash, { life: 0.08, scale0: 0.4, scale1: 1.3, opacity0: 0.9, opacity1: 0 });
+
+        pulseController(aim.controller || xr.right, 0.22, 35);
+        sfx.shot();
+      }
+
+      function clearBullets() {
+        for (const bullet of bullets) {
+          world.remove(bullet.mesh);
+        }
+        bullets.length = 0;
+      }
+
+      function updateBullets(dt) {
+        for (let i = bullets.length - 1; i >= 0; i--) {
+          const bullet = bullets[i];
+          if (!bullet) continue;
+          const previous = bullet.mesh.position.clone();
+          bullet.mesh.position.addScaledVector(bullet.velocity, dt);
+          bullet.life -= dt;
+
+          let consumed = false;
+
+          // Impacto en la artillería enemiga (se puede destruir en el aire).
+          for (let j = flak.length - 1; j >= 0; j--) {
+            const shot = flak[j];
+            if (segmentSphere(previous, bullet.mesh.position, shot.mesh.position, 1.15)) {
+              explode(shot.mesh.position.clone(), 0.7, 0xff7a3a);
+              world.remove(shot.mesh);
+              flak.splice(j, 1);
+              sfx.boom();
+              popup('+25', bullet.mesh.position.clone(), '#ffd479');
+              game.score += 25;
+              refreshHud();
+              consumed = true;
+              break;
+            }
+          }
+
+          if (!consumed) {
+            for (const enemy of enemies) {
+              if (!enemy.alive) continue;
+              if (segmentSphere(previous, bullet.mesh.position, enemy.group.position, enemy.radius)) {
+                hitEnemy(enemy, bullet.mesh.position.clone());
+                consumed = true;
+                break;
+              }
+            }
+          }
+
+          if (consumed || bullet.life <= 0) {
+            world.remove(bullet.mesh);
+            const index = bullets.indexOf(bullet);
+            if (index >= 0) bullets.splice(index, 1);
+          }
+        }
+      }
+
+      function fireFlak(enemy) {
+        if (flak.length > 3) return;
+        const target = cockpitRoot.position.clone().sub(world.position);
+        const origin = enemy.group.position.clone().add(V3(0, -0.4, 1.2));
+        const direction = target.sub(origin).normalize();
+
+        const meshGroup = new THREE.Group();
+        meshGroup.position.copy(origin);
+        const core = new THREE.Mesh(GEO.sphere, flakMaterial);
+        core.scale.setScalar(0.45);
+        meshGroup.add(core);
+        const glow = new THREE.Sprite(flakGlowMaterial);
+        glow.scale.setScalar(2.8);
+        meshGroup.add(glow);
+
+        world.add(meshGroup);
+        flak.push({
+          mesh: meshGroup,
+          velocity: direction.multiplyScalar(CFG.bombSpeed),
+          life: 9,
+        });
+        sfx.alarm();
+      }
+
+      function clearFlak() {
+        for (const shot of flak) world.remove(shot.mesh);
+        flak.length = 0;
+      }
+
+      function updateFlak(dt) {
+        for (let i = flak.length - 1; i >= 0; i--) {
+          const shot = flak[i];
+          shot.mesh.position.addScaledVector(shot.velocity, dt);
+          shot.life -= dt;
+
+          const worldPoint = shot.mesh.position.clone().add(world.position);
+          const hit = worldPoint.distanceToSquared(cockpitRoot.position) < 1.2 * 1.2;
+
+          if (hit) {
+            explode(shot.mesh.position.clone(), 1.1, 0xff5d73);
+            world.remove(shot.mesh);
+            flak.splice(i, 1);
+            damagePlayer(CFG.flakDamage, t('flak'));
+            sfx.boom();
+            continue;
+          }
+
+          if (shot.life <= 0 || shot.mesh.position.z > 10) {
+            world.remove(shot.mesh);
+            flak.splice(i, 1);
+          }
+        }
+      }
+
+      /* ==========================================================================
+         12. ACTUALIZACIÓN DE ENEMIGOS
+         ========================================================================== */
+
+      function updateEnemies(dt, time) {
+        const cameraPos = camera.getWorldPosition(V3());
+
+        for (let i = enemies.length - 1; i >= 0; i--) {
+          const enemy = enemies[i];
+          if (!enemy.alive) continue;
+
+          enemy.z += enemy.speed * dt;
+
+          let x = enemy.x0;
+          let y = enemy.y0 + Math.sin(time * 1.6 + enemy.phase) * 0.22;
+
+          if (enemy.type === 'interceptor') {
+            x += Math.sin(time * 2.4 + enemy.phase) * 3.4;
+            y += Math.sin(time * 3 + enemy.phase) * 0.45;
+          } else if (enemy.type === 'bomber') {
+            y += Math.sin(time * 0.8 + enemy.phase) * 0.35;
+          }
+
+          if (enemy.z > -13) {
+            y -= (enemy.z + 13) * 0.95;
+            x += Math.sign(x || 1) * (enemy.z + 13) * 0.35;
+          }
+
+          enemy.group.position.set(x, y, enemy.z);
+          enemy.group.rotation.z = Math.sin(time * 2 + enemy.phase) * 0.12;
+          enemy.group.rotation.y = Math.sin(time * 1.2 + enemy.phase) * 0.06;
+
+          const prop = enemy.group.userData.prop;
+          if (prop) prop.rotation.z -= dt * 44;
+          const bomberProps = enemy.group.userData.bomberProps;
+          if (bomberProps) {
+            for (const p of bomberProps) p.rotation.z -= dt * 40;
+          }
+
+          // Escala angular constante para que las respuestas se lean desde lejos.
+          const distance = enemy.group.position.distanceTo(cameraPos);
+          const labelHeight = clamp(distance * 0.037, 1.05, 6) / enemy.scale;
+          enemy.label.scale.set(labelHeight * enemy.label.userData.aspect, labelHeight, 1);
+
+          if (enemy.flash > 0) {
+            enemy.flash -= dt;
+            enemy.hitFlash.material.opacity = Math.max(0, enemy.flash / 0.12) * 0.7;
+            if (enemy.flash <= 0) enemy.hitFlash.visible = false;
+          }
+
+          if (
+            enemy.type === 'bomber' &&
+            !enemy.crossed &&
+            enemy.z > CFG.spawnZ + 8 &&
+            enemy.z < CFG.defenseZ - 2
+          ) {
+            enemy.fireTimer -= dt;
+            if (enemy.fireTimer <= 0) {
+              fireFlak(enemy);
+              enemy.fireTimer = rand(3.2, 5.0);
+            }
+          }
+
+          if (!enemy.crossed && enemy.z > CFG.defenseZ) {
+            enemy.crossed = true;
+            if (enemy.correct && game.state === 'playing') {
+              missAnswer();
+              return;
+            }
+          }
+
+          if (enemy.z > 12) {
+            removeEnemy(enemy);
+          }
+        }
+      }
+
+      /* ==========================================================================
+         13. MANDOS VR, LÁSER, HÁPTICA Y SELECCIÓN
+         ========================================================================== */
+
+      const xr = {
+        controllers: [],
+        left: null,
+        right: null,
+      };
+
+      const laser = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.0045, 0.0045, 1, 6, 1, true),
+        new THREE.MeshBasicMaterial({
+          color: 0xffd479,
+          transparent: true,
+          opacity: 0.55,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          depthTest: false,
+          toneMapped: false,
+        })
+      );
+      laser.renderOrder = 50;
+      laser.visible = false;
+      scene.add(laser);
+
+      const reticle = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+          map: TEX.glow(),
+          color: 0x4de2c5,
+          transparent: true,
+          opacity: 0.95,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          depthTest: false,
+          toneMapped: false,
+        })
+      );
+      reticle.renderOrder = 51;
+      reticle.visible = false;
+      scene.add(reticle);
+
+      const aim = {
+        origin: V3(),
+        direction: V3(0, 0, -1),
+        point: V3(),
+        distance: 30,
+        enemy: null,
+        button: null,
+        controller: null,
+      };
+
+      let hoveredButton = null;
+
+      function pulseController(controller, intensity = 0.5, duration = 60) {
+        const source = controller?.userData.inputSource;
+        const pad = source?.gamepad || controller?.userData.gamepad;
+        const actuators = pad?.hapticActuators;
+        const actuator = Array.isArray(actuators) ? actuators[0] : actuators;
+        try {
+          actuator?.pulse?.(intensity, duration);
+        } catch {
+          /* háptica no disponible */
+        }
+      }
+
+      function buildControllers() {
+        for (let i = 0; i < 2; i++) {
+          const controller = renderer.xr.getController(i);
+          controller.userData.index = i;
+          controller.userData.handedness = null;
+          controller.userData.inputSource = null;
+
+          controller.addEventListener('connected', (event) => {
+            controller.userData.inputSource = event.data;
+            controller.userData.handedness = event.data.handedness;
+            if (event.data.handedness === 'left') xr.left = controller;
+            if (event.data.handedness === 'right') xr.right = controller;
+            controller.visible = true;
+            calibrateFlight();
+          });
+
+          controller.addEventListener('disconnected', () => {
+            controller.userData.inputSource = null;
+            if (xr.left === controller) xr.left = null;
+            if (xr.right === controller) xr.right = null;
+            controller.visible = false;
+          });
+
+          controller.addEventListener('selectstart', (event) => {
+            initAudio();
+            onSelectStart(controller, event);
+          });
+
+          controller.addEventListener('selectend', () => {
+            if (!xr.right || controller === xr.right) game.firing = false;
+          });
+
+          controller.addEventListener('squeezestart', () => {
+            if (controller === xr.left || (!xr.left && controller === flightController())) {
+              calibrateFlight();
+              pulseController(controller, 0.4, 40);
+            }
+          });
+
+          const ring = new THREE.Mesh(
+            new THREE.TorusGeometry(0.028, 0.007, 6, 20),
+            new THREE.MeshBasicMaterial({ color: 0x4de2c5, toneMapped: false })
+          );
+          ring.rotation.x = Math.PI / 2;
+          controller.add(ring);
+
+          const dot = mesh(GEO.sphere, accentMat, 0, 0, -0.01, 0.009, 0.009, 0.009);
+          controller.add(dot);
+
+          scene.add(controller);
+          xr.controllers.push(controller);
+
+          const grip = renderer.xr.getControllerGrip(i);
+          const gripMesh = cylinder(0.018, 0.11, darkMat, 0, 0, 0, Math.PI / 2, 0, 0, 8);
+          grip.add(gripMesh);
+          scene.add(grip);
+        }
+      }
+
+      buildControllers();
+
+      function pickButton(origin, direction) {
+        const targets = [];
+        if (panelAnchor.visible) targets.push(...panelButtons);
+        if (exitButton.visible) targets.push(exitButton);
+        if (!targets.length) return null;
+        raycaster.set(origin, direction);
+        raycaster.far = 8;
+        const hits = raycaster.intersectObjects(targets, false);
+        for (const hit of hits) {
+          const target = hit.object;
+          if (target.userData.onSelect) return target;
+        }
+        return null;
+      }
+
+      function updateAim() {
+        if (!renderer.xr.isPresenting) {
+          laser.visible = false;
+          reticle.visible = false;
+          aim.enemy = null;
+          aim.button = null;
+          if (game.state === 'menu' || game.state === 'gameover' || game.state === 'victory') {
+            aim.origin.copy(camera.position);
+            camera.getWorldDirection(aim.direction);
+          }
+          return;
+        }
+
+        const controller = xr.right || xr.left || xr.controllers[0];
+        if (!controller) {
+          laser.visible = false;
+          reticle.visible = false;
+          return;
+        }
+
+        controller.getWorldPosition(aim.origin);
+        const quat = new THREE.Quaternion();
+        controller.getWorldQuaternion(quat);
+        aim.direction.set(0, 0, -1).applyQuaternion(quat).normalize();
+        aim.controller = controller;
+
+        let bestDistance = 40;
+        let bestEnemy = null;
+        let bestButton = null;
+
+        for (const enemy of enemies) {
+          if (!enemy.alive) continue;
+          const center = enemy.group.position.clone().add(world.position);
+          const toCenter = center.clone().sub(aim.origin);
+          const forward = toCenter.dot(aim.direction);
+          if (forward <= 0) continue;
+          const closest = aim.origin.clone().addScaledVector(aim.direction, forward);
+          const distanceSq = closest.distanceToSquared(center);
+          if (distanceSq < enemy.radius * enemy.radius && forward < bestDistance) {
+            bestDistance = forward;
+            bestEnemy = enemy;
+            bestButton = null;
+          }
+        }
+
+        const button = pickButton(aim.origin, aim.direction);
+        if (button) {
+          const hitDistance = aim.origin.distanceTo(button.getWorldPosition(V3()));
+          if (hitDistance < bestDistance) {
+            bestDistance = hitDistance;
+            bestButton = button;
+            bestEnemy = null;
+          }
+        }
+
+        aim.distance = bestDistance;
+        aim.enemy = bestEnemy;
+        aim.button = bestButton;
+        aim.point.copy(aim.origin).addScaledVector(aim.direction, bestDistance);
+
+        const end = aim.point;
+        const delta = end.clone().sub(aim.origin);
+        const length = delta.length();
+        laser.visible = true;
+        laser.position.copy(aim.origin).addScaledVector(delta, 0.5);
+        laser.quaternion.setFromUnitVectors(V3(0, 1, 0), delta.normalize());
+        laser.scale.set(1, Math.max(0.01, length), 1);
+        laser.material.color.setHex(bestButton ? 0xffd479 : bestEnemy ? 0xff5d73 : 0x4de2c5);
+
+        reticle.visible = true;
+        reticle.position.copy(aim.point);
+        const scale = clamp(bestDistance * 0.018, 0.12, 1.2);
+        reticle.scale.setScalar(scale);
+        reticle.material.color.setHex(bestButton ? 0xffd479 : bestEnemy ? 0xff5d73 : 0x4de2c5);
+
+        updateHover(bestButton);
+      }
+
+      function updateHover(button) {
+        if (hoveredButton === button) return;
+        if (hoveredButton) {
+          hoveredButton.scale.setScalar(hoveredButton.userData.baseScale || 1);
+          hoveredButton.material.opacity = 1;
+        }
+        hoveredButton = button;
+        if (hoveredButton) {
+          hoveredButton.scale.setScalar(1.05);
+          hoveredButton.material.opacity = 0.92;
+          sfx.click();
+          pulseController(aim.controller, 0.15, 20);
+        }
+      }
+
+      function activateButton(button) {
+        if (!button || !button.userData.onSelect) return;
+        initAudio();
+        sfx.click();
+        pulseController(aim.controller, 0.5, 60);
+        button.userData.onSelect();
+      }
+
+      function onSelectStart(controller, event) {
+        const origin = controller.getWorldPosition(V3());
+        const quat = new THREE.Quaternion();
+        controller.getWorldQuaternion(quat);
+        const direction = V3(0, 0, -1).applyQuaternion(quat).normalize();
+
+        // El botón de salida está siempre disponible, también mientras se juega.
+        if (exitButton.visible) {
+          const exitPick = pickButton(origin, direction);
+          if (exitPick === exitButton) {
+            activateButton(exitButton);
+            return;
+          }
+        }
+
+        if (game.state === 'menu' || game.state === 'gameover' || game.state === 'victory') {
+          const button = pickButton(origin, direction);
+          if (button) {
+            activateButton(button);
+          } else {
+            sfx.shot();
+          }
+          return;
+        }
+
+        if (game.state !== 'playing') return;
+        if (!xr.right || controller === xr.right) {
+          game.firing = true;
+          tryFire();
+        }
+      }
+
+      /* ==========================================================================
+         14. ENTRADA DE ESCRITORIO Y BOTONES HTML
+         ========================================================================== */
+
+      const dom = renderer.domElement;
+      const pointer = new THREE.Vector2();
+      let pointerLocked = false;
+
+      function updatePointer(event) {
+        const rect = dom.getBoundingClientRect();
+        pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      }
+
+      function pickButtonFromPointer() {
+        const targets = [];
+        if (panelAnchor.visible) targets.push(...panelButtons);
+        if (exitButton.visible) targets.push(exitButton);
+        if (!targets.length) return null;
+        camera.updateMatrixWorld();
+        raycaster.setFromCamera(pointer, camera);
+        raycaster.far = 20;
+        const hits = raycaster.intersectObjects(targets, false);
+        for (const hit of hits) {
+          if (hit.object.userData.onSelect) return hit.object;
+        }
+        return null;
+      }
+
+      dom.addEventListener('pointerdown', (event) => {
+        if (renderer.xr.isPresenting) return;
+        initAudio();
+        updatePointer(event);
+
+        if (game.state === 'playing') {
+          if (!pointerLocked) dom.requestPointerLock?.();
+          game.firing = true;
+          tryFire();
+          return;
+        }
+
+        const button = pickButtonFromPointer();
+        if (button) activateButton(button);
+      });
+
+      window.addEventListener('pointerup', () => {
+        if (!renderer.xr.isPresenting) game.firing = false;
+      });
+
+      dom.addEventListener('pointermove', (event) => {
+        updatePointer(event);
+        if (renderer.xr.isPresenting) return;
+        if (game.state === 'playing') return;
+        const button = pickButtonFromPointer();
+        updateHover(button);
+      });
+
+      document.addEventListener('pointerlockchange', () => {
+        pointerLocked = document.pointerLockElement === dom;
+        if (!pointerLocked && game.state === 'playing') game.firing = false;
+      });
+
+      document.addEventListener('mousemove', (event) => {
+        if (renderer.xr.isPresenting || !pointerLocked) return;
+        look.yaw -= event.movementX * 0.0022;
+        look.pitch = clamp(look.pitch - event.movementY * 0.0022, -0.85, 0.65);
+        applyLook();
+      });
+
+      window.addEventListener('keydown', (event) => {
+        const key = event.key.toLowerCase();
+        initAudio();
+
+        if (event.key === 'Escape') {
+          if (moodleModal && !moodleModal.hidden) {
+            closeMoodle();
+            return;
+          }
+          if (game.state !== 'menu') {
+            showMenu();
+            return;
+          }
+          exitToHome();
+          return;
+        }
+
+        if (key === 'enter') {
+          if (game.state === 'menu') startCampaign();
+          else if (game.state === 'gameover' || game.state === 'victory') {
+            startRun(game.retryMode, game.retrySector);
+          }
+          return;
+        }
+
+        if (event.code === 'Space') {
+          event.preventDefault();
+          if (game.state === 'menu') {
+            startCampaign();
+            return;
+          }
+          if (game.state === 'gameover' || game.state === 'victory') {
+            startRun(game.retryMode, game.retrySector);
+            return;
+          }
+          if (game.state === 'playing') {
+            game.firing = true;
+            tryFire();
+          }
+          return;
+        }
+
+        if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
+          event.preventDefault();
+          keys.add(key);
+        }
+      });
+
+      window.addEventListener('keyup', (event) => {
+        const key = event.key.toLowerCase();
+        keys.delete(key);
+        if (event.code === 'Space') game.firing = false;
+      });
+
+      window.addEventListener('blur', () => {
+        keys.clear();
+        game.firing = false;
+      });
+
+      document.getElementById('btn-menu')?.addEventListener('click', () => {
+        initAudio();
+        showMenu();
+      });
+
+      document.getElementById('langs')?.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-lang]');
+        if (!button) return;
+        initAudio();
+        setLang(button.dataset.lang);
+      });
+
+      /* ==========================================================================
+         15. WEBXR: ENTRADA, SALIDA Y ALINEACIÓN DE LA CABINA
+         ========================================================================== */
+
+      let needsAlign = false;
+      let alignFrames = 0;
+
+      function alignCockpitToHead() {
+        const head = camera.getWorldPosition(V3());
+        const dir = camera.getWorldDirection(V3());
+
+        cockpitRoot.position.copy(head);
+        cockpitRoot.rotation.set(0, Math.atan2(-dir.x, -dir.z), 0);
+        cockpitTilt.position.set(0, 0, 0);
+        cockpitTilt.rotation.set(0, 0, 0);
+        flight.neutral = null;
+        calibrateFlight();
+        placePanel();
+      }
+
+      const vrButton = VRButton.createButton(renderer);
+      document.body.appendChild(vrButton);
+      vrButton.addEventListener('click', initAudio);
+
+      renderer.xr.addEventListener('sessionstart', () => {
+        document.body.classList.add('xr');
+        document.body.classList.remove('playing');
+        needsAlign = true;
+        alignFrames = 0;
+        if (exitButton) exitButton.visible = true;
+        fitHudToViewport();
+        initAudio();
+      });
+
+      renderer.xr.addEventListener('sessionend', () => {
+        document.body.classList.remove('xr');
+        game.firing = false;
+        if (exitButton) exitButton.visible = false;
+        resetLook();
+        flight.neutral = null;
+        xr.left = null;
+        xr.right = null;
+        placePanel();
+        fitHudToViewport();
+        if (game.state === 'playing') document.body.classList.add('playing');
+      });
+
+      /* ==========================================================================
+         16. BUCLE PRINCIPAL (setAnimationLoop + THREE.Clock)
+         ========================================================================== */
+
+      let firstFrame = true;
+      let menuWasVisible = true;
+
+      function render() {
+        const dt = Math.min(clock.getDelta(), 0.05);
+        const time = clock.elapsedTime;
+
+        // En WebXR esperamos a tener la pose real de la cabeza antes de colocar
+        // la cabina y el cartel. Así el jugador aparece sentado en su sitio.
+        if (renderer.xr.isPresenting && needsAlign) {
+          alignFrames += 1;
+          const head = camera.getWorldPosition(V3());
+          if (head.lengthSq() > 0.04 || alignFrames > 30) {
+            alignCockpitToHead();
+            needsAlign = false;
+          }
+        }
+
+        // El panel se muestra/oculta según el estado.
+        const panelVisible =
+          game.state === 'menu' || game.state === 'gameover' || game.state === 'victory';
+        if (panelVisible !== menuWasVisible) {
+          panelAnchor.visible = panelVisible;
+          menuWasVisible = panelVisible;
+        }
+
+        game.cooldown = Math.max(0, game.cooldown - dt);
+        updateWorld(dt, time);
+        updateFlight(dt);
+        updateCockpit(dt, time);
+
+        if (game.state === 'playing') {
+          updateEnemies(dt, time);
+          if (game.firing) tryFire();
+        } else {
+          // Los enemigos que quedan en pantalla huyen y se retiran.
+          for (let i = enemies.length - 1; i >= 0; i--) {
+            const enemy = enemies[i];
+            enemy.z += enemy.speed * dt * 1.6;
+            enemy.group.position.z = enemy.z;
+            if (enemy.z > 12) removeEnemy(enemy);
+          }
+        }
+
+        updateBullets(dt);
+        updateFlak(dt);
+        fx.update(dt);
+
+        scene.updateMatrixWorld();
+        updateAim();
+
+        if (game.damage > 0.01) {
+          damageGlass.material.opacity = game.damage * 0.8;
+        } else {
+          damageGlass.material.opacity = 0;
+        }
+
+        renderer.render(scene, camera);
+
+        if (firstFrame) {
+          firstFrame = false;
+          loader.classList.add('done');
+        }
+      }
+
+      /* ==========================================================================
+         17. ARRANQUE
+         ========================================================================== */
+
+      window.addEventListener('resize', () => {
+        if (renderer.xr.isPresenting) return;
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        fitHudToViewport();
+      });
+
+      /**
+       * Configuración por enlace, cómoda en Pico 4:
+       *   ?api=http://172.16.35.2/escuadron-api&quiz=quiz:39&start=1
+       *   ?api=http://172.16.35.2/escuadron-api&cmid=7772&start=1
+       */
+      function applyUrlConfig() {
+        const params = new URLSearchParams(window.location.search);
+        const config = loadMoodleConfig();
+        let changed = false;
+
+        const api = params.get('api');
+        if (api) {
+          config.api = api;
+          changed = true;
+        }
+        const quiz = params.get('quiz');
+        if (quiz) {
+          config.quiz = quiz;
+          changed = true;
+        }
+        const cmid = params.get('cmid');
+        if (cmid) {
+          config.quiz = `cmid:${cmid}`;
+          changed = true;
+        }
+        if (changed) saveMoodleConfig(config);
+
+        const lang = params.get('lang');
+        if (lang === 'eu' || lang === 'es') {
+          LANG = lang === 'eu' ? 'eu' : 'es';
+          try {
+            localStorage.setItem('lwpd.lang', LANG);
+          } catch {
+            /* sin almacenamiento */
+          }
+        }
+
+        if (window.location.hash) {
+          window.history.replaceState(
+            null,
+            '',
+            window.location.pathname + window.location.search
+          );
+        }
+
+        return params.get('start') === '1' || params.get('play') === '1';
+      }
+
+      const autostartMoodle = applyUrlConfig();
+
+      applyStaticText();
+      for (const button of document.querySelectorAll('[data-lang]')) {
+        button.classList.toggle('on', button.dataset.lang === LANG);
+      }
+
+      resetLook();
+      setMood(0);
+      showMenu();
+      renderer.setAnimationLoop(render);
+
+      if (autostartMoodle) {
+        setTimeout(() => quickMoodle(), 350);
+      }
+
+      // Gancho de depuración para el aula y las pruebas automáticas.
+      window.__escuadron = {
+        game,
+        save,
+        startCampaign,
+        startRun,
+        showMenu,
+        playMoodle: quickMoodle,
+        get enemies() {
+          return enemies;
+        },
+        get flak() {
+          return flak;
+        },
+        get hud() {
+          return hud;
+        },
+        get panel() {
+          return panelAnchor;
+        },
+        get controllers() {
+          return xr.controllers;
+        },
+        debug: {
+          hit(enemy) {
+            if (enemy) hitEnemy(enemy, enemy.group.position.clone());
+          },
+          damage(amount) {
+            damagePlayer(amount, 'debug');
+          },
+          flak() {
+            if (enemies[0]) fireFlak(enemies[0]);
+          },
+        },
+        renderer,
+        scene,
+        camera,
+      };
+    </script>
+  </body>
+</html>

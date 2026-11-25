@@ -142,7 +142,7 @@ Cada pregunta se convierte en una pantalla (`STAGE`).
 También puedes usar un enlace directo, cómodo en Pico 4:
 
 ```
-https://jrubioastigarraga.github.io/la-web-por-dentro/?quiz=1234&start=1
+https://jrubioastigarraga.github.io/la-web-por-dentro/fpv.html?quiz=1234&start=1
 ```
 
 Si has definido clave:

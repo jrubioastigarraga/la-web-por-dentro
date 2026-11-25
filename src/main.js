@@ -147,6 +147,28 @@ backButton.visible = false;
 backButton.userData.onSelect = () => showMenu();
 scene.add(backButton);
 
+// Salidas siempre disponibles dentro de WebXR (en escritorio están en la
+// barra superior HTML): volver a la portada o saltar a la cabina FPV.
+const homeButton = makeButton('INICIO', { w: 0.21, h: 0.065, color: '#93a7bd' });
+homeButton.position.set(0.58, 0.28, -0.9);
+homeButton.visible = false;
+homeButton.renderOrder = 1000;
+if (homeButton.material) homeButton.material.depthTest = false;
+homeButton.userData.onSelect = () => {
+  window.location.href = './index.html';
+};
+camera.add(homeButton);
+
+const fpvButton = makeButton('FPV', { w: 0.17, h: 0.06, color: '#4de2c5' });
+fpvButton.position.set(0.58, 0.19, -0.9);
+fpvButton.visible = false;
+fpvButton.renderOrder = 1000;
+if (fpvButton.material) fpvButton.material.depthTest = false;
+fpvButton.userData.onSelect = () => {
+  window.location.href = './fpv.html';
+};
+camera.add(fpvButton);
+
 /* ------------------------------------------------------- interacción */
 
 const raycaster = new THREE.Raycaster();
@@ -174,7 +196,7 @@ function resolveInteractive(object) {
 function pick(origin, direction) {
   raycaster.set(origin, direction);
   scene.updateMatrixWorld();
-  const hits = raycaster.intersectObjects([stage, backButton], true);
+  const hits = raycaster.intersectObjects([stage, backButton, homeButton, fpvButton], true);
   for (const hit of hits) {
     if (hit.object.userData.isLabel) continue;
     if (!isVisible(hit.object)) continue;
@@ -201,7 +223,7 @@ function updateHover() {
   }
   camera.updateMatrixWorld();
   raycaster.setFromCamera(pointer, camera);
-  const hits = raycaster.intersectObjects([stage, backButton], true);
+  const hits = raycaster.intersectObjects([stage, backButton, homeButton, fpvButton], true);
 
   let found = false;
   for (const hit of hits) {
@@ -238,13 +260,14 @@ function onXRSelect(event) {
   controller.getWorldQuaternion(quaternion);
   const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(quaternion);
 
-  if (game && game.handleXR(origin, direction)) return;
-
   const target = pick(origin, direction);
   if (target) {
     sfx.click();
     target.userData.onSelect();
+    return;
   }
+
+  if (game && game.handleXR(origin, direction)) return;
 }
 
 for (let i = 0; i < 2; i++) {
@@ -573,7 +596,11 @@ window.addEventListener('keydown', (event) => {
       closeMoodle();
       return;
     }
-    if (state.screen !== 'menu') showMenu();
+    if (state.screen !== 'menu') {
+      showMenu();
+      return;
+    }
+    window.location.href = './index.html';
     return;
   }
 
@@ -688,12 +715,16 @@ renderer.xr.addEventListener('sessionstart', () => {
   document.body.classList.add('xr');
   for (const controller of controllers) controller.visible = true;
   backButton.visible = state.screen === 'game';
+  homeButton.visible = true;
+  fpvButton.visible = true;
 });
 
 renderer.xr.addEventListener('sessionend', () => {
   document.body.classList.remove('xr');
   for (const controller of controllers) controller.visible = false;
   backButton.visible = false;
+  homeButton.visible = false;
+  fpvButton.visible = false;
   camera.position.set(0, 1.6, 0);
   applyLook();
 });

@@ -45,8 +45,8 @@ android/app/build/outputs/apk/debug/app-debug.apk
 
    O copia el APK al Pico y ábrelo desde el explorador de archivos.
 
-3. Abre **Escuadrón Web** en el Pico. Se abrirá el navegador con el juego;
-   pulsa **Enter VR**.
+3. Abre **Escuadrón Web** en el Pico. Se abrirá el navegador con la portada;
+   elige **Cabina FPV** y pulsa **Enter VR**.
 
 ## Cambiar la URL
 
