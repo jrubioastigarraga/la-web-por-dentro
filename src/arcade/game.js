@@ -25,6 +25,7 @@ import {
   makeVignetteTexture,
   shared,
 } from './art.js';
+import { makeModel, MODEL_BY_LANE } from './models.js';
 
 /* --------------------------------------------------------------- constantes */
 
@@ -417,7 +418,7 @@ export class Arcade {
 
   spawnWave() {
     const count = this.current.options.length;
-    const spread = 0.45;
+    const spread = 0.52;
     const lanes =
       count === 1
         ? [0]
@@ -425,19 +426,26 @@ export class Arcade {
             { length: count },
             (_, i) => -spread + (2 * spread * i) / (count - 1)
           );
-    const cardW = count >= 4 ? 0.272 : 0.33;
-    const planeSize = count >= 4 ? 0.17 : 0.19;
+    const cardW = count >= 4 ? 0.25 : 0.32;
+    const planeSize = count >= 4 ? 0.15 : 0.18;
     const picks = shuffle(Array.from({ length: count }, (_, i) => i));
 
-    this.hitX = count >= 4 ? 0.14 : 0.17;
+    this.hitX = count >= 4 ? 0.12 : 0.16;
 
     picks.forEach((lane, i) => {
       const isCorrect = i === this.current.correct;
       const color = ENEMY_KINDS[lane % ENEMY_KINDS.length];
 
       const holder = new THREE.Group();
-      const plane = makePlane(color, planeSize);
-      plane.rotation.z = Math.PI;
+      const modelKey = MODEL_BY_LANE[i % MODEL_BY_LANE.length];
+      const model = makeModel(modelKey, modelKey === 'bomber' ? 0.19 : 0.16);
+      let plane;
+      if (model) {
+        plane = model;
+      } else {
+        plane = makePlane(color, planeSize);
+        plane.rotation.z = Math.PI;
+      }
       holder.add(plane);
 
       const label = makeCard({
@@ -450,7 +458,11 @@ export class Arcade {
         bg: 'rgba(8,14,24,0.92)',
         border: 'rgba(255,255,255,0.16)',
       });
-      label.position.set(0, -0.122, 0.012);
+      label.position.set(
+        0,
+        model ? (modelKey === 'bomber' ? -0.17 : -0.15) : -0.122,
+        0.012
+      );
       holder.add(label);
 
       const target = {

@@ -879,6 +879,8 @@
     <script type="module">
       import * as THREE from 'three';
       import { VRButton } from 'three/addons/webxr/VRButton.js';
+      import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+      import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 
       /* ==========================================================================
          0. CONFIGURACIÓN, IDIOMA Y UTILIDADES
@@ -909,6 +911,92 @@
       const clamp = THREE.MathUtils.clamp;
       const damp = THREE.MathUtils.damp;
 
+      /* ------------------------------------------------------- modelos glTF */
+
+      const MODEL_URL = (name) => new URL(`models/${name}`, document.baseURI).href;
+
+      const PLANE_MODELS = {
+        fighter: { file: 'fighter_plane.glb', rot: [0, Math.PI, 0], size: 12, label: 5.4 },
+        interceptor: { file: 'stylized_interbellum_plane.glb', rot: [0, 0, 0], size: 12, label: 5.4 },
+        bomber: { file: 'wwii_soviet_plane.glb', rot: [Math.PI / 2, 0, Math.PI], size: 14, label: 7.2 },
+        escort: { file: 'j15t_plane.glb', rot: [0, 0, 0], size: 11, label: 5 },
+        island: { file: 'low_poly_island.glb', rot: [0, 0, 0], size: 30 },
+      };
+      const MODEL_BY_LANE = ['fighter', 'interceptor', 'bomber', 'escort'];
+
+      const modelAssets = {};
+      let modelsReady = false;
+      const gltfLoader = new GLTFLoader();
+
+      function prepareModel(asset, targetSize) {
+        if (!asset || !asset.scene) return null;
+        const root = cloneSkinned(asset.scene);
+        root.rotation.set(...asset.rot);
+        root.updateMatrixWorld(true);
+
+        const bounds = new THREE.Box3().setFromObject(root);
+        const size = bounds.getSize(new THREE.Vector3());
+        const max = Math.max(size.x, size.y, size.z) || 1;
+        root.scale.multiplyScalar(targetSize / max);
+        root.updateMatrixWorld(true);
+
+        const scaled = new THREE.Box3().setFromObject(root);
+        const center = scaled.getCenter(new THREE.Vector3());
+        root.position.sub(center);
+        root.traverse((child) => {
+          if (child.isMesh) {
+            child.frustumCulled = true;
+            child.castShadow = false;
+            child.receiveShadow = false;
+          }
+        });
+        return root;
+      }
+
+      function loadModelAssets() {
+        const entries = Object.entries(PLANE_MODELS);
+        Promise.all(
+          entries.map(async ([key, config]) => {
+            try {
+              const gltf = await gltfLoader.loadAsync(MODEL_URL(config.file));
+              gltf.scene.traverse((child) => {
+                if (child.geometry) child.geometry.__shared = true;
+                if (!child.material) return;
+                const materials = Array.isArray(child.material)
+                  ? child.material
+                  : [child.material];
+                for (const material of materials) {
+                  material.__shared = true;
+                  for (const key of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'alphaMap']) {
+                    if (material[key]) material[key].__shared = true;
+                  }
+                }
+              });
+              modelAssets[key] = { ...config, scene: gltf.scene };
+            } catch (error) {
+              console.warn(`No se pudo cargar ${config.file}`, error);
+            }
+          })
+        ).then(() => {
+          modelsReady = true;
+          applyIslandModels();
+        });
+      }
+
+      function applyIslandModels() {
+        if (!modelAssets.island || !islands.length) return;
+        for (let i = 0; i < islands.length; i++) {
+          const group = islands[i];
+          const model = prepareModel(modelAssets.island, 16 + (i % 3) * 3);
+          if (!model) continue;
+          model.updateMatrixWorld(true);
+          const box = new THREE.Box3().setFromObject(model);
+          model.position.y = -14 - box.min.y;
+          group.clear();
+          group.add(model);
+        }
+      }
+
       const STR = {
         es: {
           brand: 'ESCUADRÓN WEB',
@@ -918,7 +1006,7 @@
           best: 'RÉCORD PERSONAL',
           aimHint: 'VR: apunta con el mando y dispara al botón · Escritorio: clic',
           menuBody:
-            'Derriba la respuesta correcta antes de que cruce la línea de defensa. Si disparas a una equivocada, pierdes HP.',
+            'Lee la pregunta en el HUD superior y dispara al avión correcto antes de que cruce la línea de defensa.',
           landingEyebrow: 'CABINA FPV · WEBXR',
           landingTitle: 'ELIGE TU MISIÓN',
           landingLead:
@@ -991,7 +1079,7 @@
           best: 'ERREKOR PERTSONALA',
           aimHint: 'VR: seinalatu agintearekin eta tiro egin botoiari · Mahaigaina: klik',
           menuBody:
-            'Bota erantzun zuzena defentsa-marra zeharkatu aurretik. Okerrekoari tiratuz gero, HP galduko duzu.',
+            'Irakurri galdera goiko HUDan eta tiro egin hegazkin zuzendari defentsa-marra zeharkatu aurretik.',
           landingEyebrow: 'FPV KABINA · WEBXR',
           landingTitle: 'AUKERATU ZURE MISIOA',
           landingLead:
@@ -1381,6 +1469,13 @@
       sunLight.position.set(50, 80, -30);
       scene.add(sunLight);
 
+      // Relleno frontal para que los modelos GLB (que miran al jugador) no
+      // queden a contraluz y se pierdan contra el cielo.
+      const fillLight = new THREE.DirectionalLight(0xbfe4ff, 1.5);
+      fillLight.position.set(0, 10, 45);
+      fillLight.target.position.set(0, 0, -30);
+      scene.add(fillLight, fillLight.target);
+
       const world = new THREE.Group();
       scene.add(world);
 
@@ -1616,6 +1711,10 @@
         world.add(island);
         islands.push(island);
       }
+
+      // Los modelos se cargan en segundo plano; al llegar sustituyen las islas
+      // procedurales por el GLB low-poly y se usan en las siguientes oleadas.
+      loadModelAssets();
 
       /* -------------------------------------------------------- nubes volumétricas */
 
@@ -2466,14 +2565,16 @@
 
           // En el panel solo va el mensaje de estado: la pregunta ya está
           // arriba, en el HUD de la cabina.
-          ctx.textAlign = 'left';
-          ctx.fillStyle = tone;
-          ctx.font = `600 30px ${FONT}`;
-          const message = d.feedback || d.question || '';
-          const fLines = wrapLines(ctx, message, W - 64, 2);
-          fLines.forEach((line, i) => {
-            ctx.fillText(line, 32, 154 + i * 38);
-          });
+          const message = d.feedback || '';
+          if (message) {
+            ctx.textAlign = 'left';
+            ctx.fillStyle = tone;
+            ctx.font = `600 30px ${FONT}`;
+            const fLines = wrapLines(ctx, message, W - 64, 2);
+            fLines.forEach((line, i) => {
+              ctx.fillText(line, 32, 154 + i * 38);
+            });
+          }
 
           // Pie: sector, etapa y progreso.
           ctx.fillStyle = '#6f8199';
@@ -2504,22 +2605,20 @@
         constructor() {
           this.canvas = document.createElement('canvas');
           this.canvas.width = 1280;
-          this.canvas.height = 320;
+          this.canvas.height = 140;
           this.ctx = this.canvas.getContext('2d');
           this.texture = canvasTexture(this.canvas);
           this.texture.anisotropy = 8;
 
           this.data = {
             show: false,
-            label: '',
             question: '',
-            feedback: '',
             tone: '#4de2c5',
           };
           this.key = '';
 
           this.mesh = new THREE.Mesh(
-            new THREE.PlaneGeometry(1.3, 0.325),
+            new THREE.PlaneGeometry(1.3, 0.142),
             new THREE.MeshBasicMaterial({
               map: this.texture,
               transparent: true,
@@ -2554,54 +2653,38 @@
           const d = this.data;
           const tone = d.tone || '#4de2c5';
 
-          this.group.visible = Boolean(d.show && (d.question || d.feedback));
+          this.group.visible = Boolean(d.show && d.question);
           if (!this.group.visible) return;
 
           ctx.clearRect(0, 0, W, H);
 
           const bg = ctx.createLinearGradient(0, 0, 0, H);
-          bg.addColorStop(0, 'rgba(3,10,16,0.94)');
-          bg.addColorStop(1, 'rgba(4,14,22,0.86)');
+          bg.addColorStop(0, 'rgba(3,10,16,0.88)');
+          bg.addColorStop(1, 'rgba(4,14,22,0.72)');
           ctx.fillStyle = bg;
-          roundRect(ctx, 0, 0, W, H, 22);
+          roundRect(ctx, 0, 0, W, H, 20);
           ctx.fill();
 
           ctx.strokeStyle = tone;
-          ctx.globalAlpha = 0.7;
+          ctx.globalAlpha = 0.65;
           ctx.lineWidth = 3;
-          roundRect(ctx, 2, 2, W - 4, H - 4, 20);
+          roundRect(ctx, 2, 2, W - 4, H - 4, 18);
           ctx.stroke();
           ctx.globalAlpha = 1;
 
           ctx.fillStyle = tone;
-          roundRect(ctx, 0, 0, 12, H, 6);
+          roundRect(ctx, 0, 0, 10, H, 5);
           ctx.fill();
 
-          ctx.fillStyle = 'rgba(120,230,255,0.04)';
-          for (let y = 6; y < H; y += 6) ctx.fillRect(14, y, W - 28, 1);
-
-          ctx.textAlign = 'left';
+          ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-
-          ctx.fillStyle = tone;
-          ctx.font = `800 20px ${FONT}`;
-          ctx.fillText(String(d.label || '').toUpperCase(), 34, 32);
-
           ctx.fillStyle = '#f2f8fd';
-          ctx.font = `700 38px ${FONT}`;
-          const qLines = wrapLines(ctx, d.question, W - 68, 2);
+          ctx.font = `700 40px ${FONT}`;
+          const qLines = wrapLines(ctx, d.question, W - 80, 2);
+          const startY = H / 2 - ((qLines.length - 1) * 46) / 2 + 2;
           qLines.forEach((line, i) => {
-            ctx.fillText(line, 32, 84 + i * 44);
+            ctx.fillText(line, W / 2, startY + i * 46);
           });
-
-          if (d.feedback) {
-            ctx.fillStyle = tone;
-            ctx.font = `600 24px ${FONT}`;
-            const fLines = wrapLines(ctx, d.feedback, W - 68, 2);
-            fLines.forEach((line, i) => {
-              ctx.fillText(line, 32, 208 + i * 31);
-            });
-          }
 
           this.texture.needsUpdate = true;
         }
@@ -2628,12 +2711,12 @@
       function fitHudToViewport() {
         if (renderer.xr.isPresenting) {
           questionHud.group.scale.setScalar(1);
-          questionHud.group.position.set(0, 0.38, -1.15);
+          questionHud.group.position.set(0, 0.60, -1.15);
           exitButton.scale.setScalar(1);
           exitButton.position.set(0.78, 0.36, -1.15);
           return;
         }
-        questionHud.group.position.set(0, 0.35, -0.95);
+        questionHud.group.position.set(0, 0.57, -0.95);
         const aspect = window.innerWidth / window.innerHeight;
         const scale = clamp(aspect / 1.5, 0.55, 1);
         questionHud.group.scale.setScalar(scale);
@@ -2825,13 +2908,23 @@
         return group;
       }
 
-      function createEnemy(type, labelText, correct, tone) {
-        const group =
-          type === 'bomber'
-            ? buildBomber(tone)
-            : type === 'interceptor'
-              ? buildInterceptor(tone)
-              : buildFighter(tone);
+      function createEnemy(type, labelText, correct, tone, lane = 0) {
+        const group = new THREE.Group();
+        const modelKey = MODEL_BY_LANE[lane % MODEL_BY_LANE.length];
+        const asset = modelAssets[modelKey];
+        const model = asset ? prepareModel(asset, asset.size) : null;
+
+        if (model) {
+          group.add(model);
+        } else {
+          group.add(
+            type === 'bomber'
+              ? buildBomber(tone)
+              : type === 'interceptor'
+                ? buildInterceptor(tone)
+                : buildFighter(tone)
+          );
+        }
 
         const label = makeTextSprite(labelText, {
           size: 54,
@@ -2842,12 +2935,16 @@
           maxLines: 2,
           pad: 26,
         });
-        label.position.set(0, type === 'bomber' ? 5.2 : 3.1, 0);
+        label.position.set(
+          0,
+          model ? asset.label || 5.4 : type === 'bomber' ? 5.2 : 3.1,
+          0
+        );
         label.renderOrder = 15;
         label.userData.text = labelText;
         group.add(label);
 
-        const radius = type === 'bomber' ? 7.4 : 4.3;
+        const radius = model ? (type === 'bomber' ? 7.2 : 4.8) : type === 'bomber' ? 7.4 : 4.3;
         const hitFlash = new THREE.Mesh(
           new THREE.SphereGeometry(Math.min(radius * 0.7, 4.5), 10, 8),
           new THREE.MeshBasicMaterial({
@@ -2869,7 +2966,7 @@
           type,
           correct,
           tone,
-          scale: 1.4,
+          scale: model ? 1 : 1.35,
           hp: type === 'bomber' ? 3 : 1,
           maxHp: type === 'bomber' ? 3 : 1,
           alive: true,
@@ -3016,10 +3113,12 @@
         });
 
         questionHud.set({
-          show: game.state !== 'menu',
-          label: t(game.hudLabelKey || 'tagQuestion'),
+          show:
+            game.state === 'intro' ||
+            game.state === 'playing' ||
+            game.state === 'feedback' ||
+            game.state === 'clear',
           question,
-          feedback,
           tone: game.hudTone || sectorTone,
         });
       }
@@ -3836,7 +3935,7 @@
         game.state = 'intro';
         game.hudTone = sector.tone;
         game.hudLabelKey = game.moodle ? 'moodleTitle' : 'sector';
-        game.hudQuestion = sectorBrief(sector);
+        game.hudQuestion = sectorTitle(sector);
         game.hudFeedback = `${t('sector')} ${game.sectorPos + 1}/${game.order.length} · ${sectorTitle(sector)}`;
         refreshHud();
         sfx.stage();
@@ -3860,7 +3959,7 @@
         game.hudTone = game.sectorSet[game.order[game.sectorPos]]?.tone || '#4de2c5';
         game.hudLabelKey = 'tagQuestion';
         game.hudQuestion = game.current.q;
-        game.hudFeedback = LANG === 'eu' ? 'Bota erantzun zuzena!' : '¡Derriba la respuesta correcta!';
+        game.hudFeedback = '';
         refreshHud();
         spawnWave();
         calibrateFlight();
@@ -3870,21 +3969,26 @@
         const current = game.current;
         if (!current) return;
 
-        const xs = [-14, -5.2, 5.2, 14];
+        const xs = [-20, -7, 7, 20];
         const types = ['fighter', 'interceptor', 'bomber', 'fighter'];
         const baseY = cockpitRoot.position.y + 1.15;
+        const lanesY = [-1.8, 2.2, -2.6, 2.6];
 
         current.options.forEach((option, index) => {
           const type = types[index % types.length];
           const tone = OPTION_TONES[index % OPTION_TONES.length];
-          const enemy = createEnemy(type, option, current.correct === index, tone);
+          const enemy = createEnemy(
+            type,
+            option,
+            current.correct === index,
+            tone,
+            index
+          );
 
-          enemy.x0 = xs[index] ?? rand(-12, 12);
-          enemy.y0 = baseY + (index % 2 === 0 ? -0.7 : 1.1) + rand(-0.25, 0.25);
+          enemy.x0 = xs[index] ?? rand(-18, 18);
+          enemy.y0 = baseY + (lanesY[index] || 0) + rand(-0.3, 0.3);
           enemy.y = enemy.y0;
-          enemy.z = CFG.spawnZ - index * 3.6;
-          enemy.label.position.y =
-            (type === 'bomber' ? 5.2 : 2.9) + (index % 2 === 0 ? 0 : 1.8);
+          enemy.z = CFG.spawnZ - index * 5.5;
           enemy.speed *= 1 + game.sectorPos * 0.035;
           enemy.group.position.set(enemy.x0, enemy.y, enemy.z);
           enemy.group.rotation.y = rand(-0.06, 0.06);
@@ -5245,6 +5349,15 @@
         },
         get hud() {
           return hud;
+        },
+        get models() {
+          return modelAssets;
+        },
+        get questionHud() {
+          return questionHud;
+        },
+        get islands() {
+          return islands;
         },
         get panel() {
           return panelAnchor;

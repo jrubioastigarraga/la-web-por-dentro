@@ -26,7 +26,7 @@ La portada `index.html` es un **selector de modo** con la estética del juego. D
 [](#la-cabina)
 
 - **Vista en primera persona** dentro de un caza procedural: marco metálico más ancho, panel de instrumentos con luces emisivas, consolas laterales, cúpula de cristal y hélice girando frente al morro.
-- **Pregunta siempre arriba**: un HUD anclado a la cabeza muestra el enunciado y la explicación en la parte superior de la pantalla, tanto en escritorio como en VR.
+- **Pregunta siempre arriba**: un HUD anclado a la cabeza muestra únicamente el enunciado en la parte superior, sin etiqueta `PREGUNTA` ni aviso genérico. El panel de instrumentos conserva los marcadores y la explicación del resultado.
 - **HUD diegético** dibujado con `CanvasTexture` sobre el panel de instrumentos: `SCORE`, `HP`, `OLEADA`, sector y mensaje de estado. Nada de menús pegados a la cara.
 - **Océano infinito** con olas geométricas en shader, islas low-poly con palmeras, nubes volumétricas, estelas de velocidad, niebla y un cielo con degradado y sol.
 - **Tres tipos de enemigo** que llegan de frente en formación:
@@ -35,6 +35,7 @@ La portada `index.html` es un **selector de modo** con la estética del juego. D
   3. **Bombardero pesado:** grande, con varios motores, tres impactos y proyectiles lentos de flak que se pueden esquivar o destruir en el aire.
 - **Juice:** explosiones de partículas 3D, anillos expansivos, metralla, popups de puntos, destello rojo en el cristal, sacudida de cabina y **feedback háptico** en los mandos.
 - **Cartel holográfico 3D** de inicio y fin de partida, con botones que se pueden **disparar con el mando VR**.
+- **Modelos GLB:** los cuatro aviones y la isla low-poly están en `public/models/` (optimizados con glTF Transform) y se cargan con `GLTFLoader`; si tardan o fallan, el juego usa los modelos procedurales de respaldo. El arcade clásico usa los mismos aviones GLB.
 
 ![Partida desde la cabina](./docs/cockpit-game.png)
 

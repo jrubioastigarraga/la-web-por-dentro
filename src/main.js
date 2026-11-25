@@ -11,6 +11,7 @@ import {
 import { HUD } from './hud.js';
 import { buildMenu } from './menu.js';
 import { buildArcade } from './arcade/game.js';
+import { preloadModels } from './arcade/models.js';
 import { SECTORS } from './arcade/questions.js';
 import { applyStaticText, setLang, t, sectorTitle } from './i18n.js';
 import {
@@ -43,6 +44,10 @@ let game = null;
 
 const host = document.getElementById('app');
 const landing = document.getElementById('landing');
+
+// Los modelos se descargan en segundo plano; si aún no están, el juego usa
+// los sprites procedurales como respaldo.
+preloadModels();
 
 function setLanding(visible) {
   if (!landing) return;
@@ -92,6 +97,11 @@ scene.add(new THREE.HemisphereLight(0x9cc0ff, 0x070b14, 1.2));
 const keyLight = new THREE.DirectionalLight(0xffffff, 2.4);
 keyLight.position.set(1.6, 3.4, 2.2);
 scene.add(keyLight);
+
+// Luz de relleno para los modelos GLB de los aviones.
+const fillLight = new THREE.DirectionalLight(0xbfe4ff, 1.1);
+fillLight.position.set(0, 2.2, 4);
+scene.add(fillLight);
 
 const rimTeal = new THREE.PointLight(COLORS.accent, 9, 9, 2);
 rimTeal.position.set(-1.7, 2, -0.4);
