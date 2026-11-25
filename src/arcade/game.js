@@ -907,7 +907,8 @@ export class Arcade {
       color: '#93a7bd',
     });
     menu.position.set(0.16, 1.11, -1.4);
-    menu.userData.onSelect = () => this.api.showMenu();
+    // Al terminar, volvemos a la pantalla principal de ESTE modo.
+    menu.userData.onSelect = () => this.api.exitToGameHome();
     this.group.add(menu);
   }
 

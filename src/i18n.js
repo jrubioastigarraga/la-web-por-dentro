@@ -16,6 +16,20 @@ const STRINGS = {
     menuBody:
       'Derriba la respuesta correcta antes de que cruce la línea. Si disparas a una equivocada, pierdes una vida. Tres vidas y cinco sectores.',
     menuFoot: 'Campaña: 5 sectores · 6 preguntas por sector',
+    landingEyebrow: 'ARCADE CLÁSICO · 1945',
+    landingTitle: 'ELIGE TU MISIÓN',
+    landingLead:
+      'La recreativa de siempre, con preguntas de Moodle y cinco sectores del ciclo DAW.',
+    landingCampaignKicker: '1945 · CRT · 3 VIDAS',
+    landingCampaignTitle: 'JUGAR CAMPAÑA',
+    landingCampaignDesc:
+      'Cinco sectores, power-ups P y R, línea de defensa y jefes de escuadrón.',
+    landingCampaignCta: 'DESPEGAR',
+    landingMoodleKicker: 'API · CMID 7772',
+    landingMoodleTitle: 'MOODLE',
+    landingMoodleDesc:
+      'API http://172.16.35.2/escuadron-api y cuestionario cmid:7772 ya configurados.',
+    landingMoodleCta: 'CARGAR PREGUNTAS',
 
     /* juego */
     tagQuestion: 'PREGUNTA',
@@ -87,7 +101,7 @@ const STRINGS = {
     moodleReady: '{n} preguntas cargadas.',
     moodleNeedIds: 'Escribe el ID del cuestionario o al menos una ID.',
     moodleNoConfig: 'Configura Moodle para jugar con tus preguntas.',
-    moodleHint: 'Configura Moodle desde la barra superior o pulsa MOODLE en el menú 3D.',
+    moodleHint: 'Configura Moodle desde la tarjeta MOODLE de la pantalla de inicio o desde el menú del juego.',
     moodleMode: 'Moodle · {n} preguntas',
     moodleQuestion: 'Pregunta {n} de {total}',
     moodleDone: 'MOODLE COMPLETADO',
@@ -108,6 +122,20 @@ const STRINGS = {
     menuBody:
       'Bota erantzun zuzena marra zeharkatu aurretik. Erantzun oker bat botatzen baduzu, bizitza bat galduko duzu. Hiru bizitza eta bost sektore.',
     menuFoot: 'Kanpaina: 5 sektore · 6 galdera sektoreko',
+    landingEyebrow: 'ARCADE KLASIKOA · 1945',
+    landingTitle: 'AUKERATU ZURE MISIOA',
+    landingLead:
+      'Betiko errekreazioa, Moodle galderak eta DAW zikloko bost sektore.',
+    landingCampaignKicker: '1945 · CRT · 3 BIZITZA',
+    landingCampaignTitle: 'JOLASTU KANPAINA',
+    landingCampaignDesc:
+      'Bost sektore, P eta R power-upak, defentsa-marra eta eskadroi-buruak.',
+    landingCampaignCta: 'HEGAN EGIN',
+    landingMoodleKicker: 'API · CMID 7772',
+    landingMoodleTitle: 'MOODLE',
+    landingMoodleDesc:
+      'API http://172.16.35.2/escuadron-api eta cmid:7772 galdetegia konfiguratuta.',
+    landingMoodleCta: 'KARGATU GALDERAK',
 
     /* jokoa */
     tagQuestion: 'GALDERA',
@@ -179,7 +207,7 @@ const STRINGS = {
     moodleReady: '{n} galdera kargatuta.',
     moodleNeedIds: 'Idatzi galdetegiaren IDa edo gutxienez ID bat.',
     moodleNoConfig: 'Konfiguratu Moodle zure galderak erabiltzeko.',
-    moodleHint: 'Konfiguratu Moodle goiko barran edo sakatu MOODLE 3D menuan.',
+    moodleHint: 'Konfiguratu Moodle hasierako MOODLE txartelatik edo jokoaren menutik.',
     moodleMode: 'Moodle · {n} galdera',
     moodleQuestion: '{n}. galdera, {total}tik',
     moodleDone: 'MOODLE AMAITUTA',
@@ -280,6 +308,18 @@ export function applyStaticText() {
   set('moodle-test', t('moodleTest'));
   set('moodle-close', t('moodleClose'));
   set('moodle-local', t('moodleLocal'));
+
+  set('landing-eyebrow', t('landingEyebrow'));
+  set('landing-title', t('landingTitle'));
+  set('landing-lead', t('landingLead'));
+  set('landing-campaign-kicker', t('landingCampaignKicker'));
+  set('landing-campaign-title', t('landingCampaignTitle'));
+  set('landing-campaign-desc', t('landingCampaignDesc'));
+  set('landing-campaign-cta', t('landingCampaignCta'));
+  set('landing-moodle-kicker', t('landingMoodleKicker'));
+  set('landing-moodle-title', t('landingMoodleTitle'));
+  set('landing-moodle-desc', t('landingMoodleDesc'));
+  set('landing-moodle-cta', t('landingMoodleCta'));
 
   for (const button of document.querySelectorAll('[data-lang]')) {
     button.classList.toggle('on', button.dataset.lang === current);

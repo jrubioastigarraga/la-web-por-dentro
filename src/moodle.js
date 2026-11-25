@@ -4,8 +4,8 @@ const DEFAULTS = {
   base: 'https://moodle.lhusurbil.eus',
   key: '',
   ids: '',
-  quiz: '',
-  api: '',
+  quiz: 'cmid:7772',
+  api: 'http://172.16.35.2/escuadron-api',
 };
 
 export function loadMoodleConfig() {
@@ -15,8 +15,8 @@ export function loadMoodleConfig() {
       base: String(raw.base || DEFAULTS.base).replace(/\/+$/, ''),
       key: String(raw.key || ''),
       ids: String(raw.ids || ''),
-      quiz: String(raw.quiz || ''),
-      api: String(raw.api || ''),
+      quiz: String(raw.quiz || DEFAULTS.quiz),
+      api: String(raw.api || DEFAULTS.api),
     };
   } catch {
     return { ...DEFAULTS };
@@ -109,7 +109,13 @@ export function normalizeQuestion(raw) {
 export async function fetchMoodleQuestions(config) {
   let quiz = String(config.quiz || '').trim();
   const ids = parseIds(config.ids);
-  const api = String(config.api || '').trim().replace(/\/+$/, '');
+  let api = String(config.api || '').trim().replace(/\/+$/, '');
+
+  // La copia del instituto puede servirse por HTTPS (Caddy). Evitamos que el
+  // navegador bloquee la API por contenido mixto.
+  if (window.location.protocol === 'https:' && /^http:\/\/172\.16\.35\.2/i.test(api)) {
+    api = api.replace(/^http:/i, 'https:');
+  }
 
   let url;
   if (api) {

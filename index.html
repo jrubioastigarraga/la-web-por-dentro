@@ -32,12 +32,15 @@
 
       html,
       body {
-        min-height: 100%;
+        height: 100%;
+        overflow: hidden;
       }
 
       body {
         margin: 0;
-        overflow-x: hidden;
+        display: flex;
+        min-height: 100dvh;
+        flex-direction: column;
         background: var(--bg);
         color: var(--ink);
         font-family: var(--font);
@@ -229,12 +232,13 @@
         position: relative;
         z-index: 2;
         display: flex;
+        flex: 0 0 auto;
         align-items: center;
         justify-content: space-between;
         gap: 20px;
-        max-width: 1180px;
+        width: min(1180px, 100%);
         margin: 0 auto;
-        padding: 22px 28px 0;
+        padding: 16px 24px 0;
       }
 
       .brand {
@@ -297,14 +301,19 @@
       main {
         position: relative;
         z-index: 2;
-        max-width: 1120px;
+        display: flex;
+        width: min(1120px, 100%);
+        flex: 1 1 auto;
+        min-height: 0;
+        flex-direction: column;
+        justify-content: center;
         margin: 0 auto;
-        padding: clamp(38px, 7vh, 82px) 28px 42px;
+        padding: clamp(8px, 2vh, 22px) 24px 0;
       }
 
       .hero {
         max-width: 780px;
-        margin: 0 auto clamp(28px, 4vh, 48px);
+        margin: 0 auto clamp(10px, 2vh, 24px);
         text-align: center;
       }
 
@@ -335,7 +344,7 @@
 
       h1 {
         margin: 0;
-        font-size: clamp(2.2rem, 6.2vw, 4.9rem);
+        font-size: clamp(2rem, 5vw, 3.7rem);
         font-weight: 900;
         line-height: 0.98;
         letter-spacing: -0.045em;
@@ -344,11 +353,11 @@
       }
 
       .lead {
-        max-width: 620px;
-        margin: 18px auto 0;
+        max-width: 640px;
+        margin: 10px auto 0;
         color: #c1d4e4;
-        font-size: clamp(0.92rem, 1.5vw, 1.08rem);
-        line-height: 1.65;
+        font-size: clamp(0.84rem, 1.3vw, 0.98rem);
+        line-height: 1.5;
         text-wrap: balance;
       }
 
@@ -356,19 +365,22 @@
 
       .modes {
         display: grid;
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: 380px;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: clamp(16px, 2.4vw, 26px);
+        gap: clamp(14px, 2.2vw, 24px);
       }
 
       .mode-card {
         position: relative;
         display: flex;
-        min-height: 470px;
+        min-height: 0;
         flex-direction: column;
         overflow: hidden;
         border: 1px solid var(--line);
-        border-radius: 24px;
-        padding: 24px 24px 22px;
+        border-radius: 22px;
+        padding: 16px 20px 16px;
         background:
           linear-gradient(180deg, rgba(10, 24, 39, 0.82), rgba(4, 10, 18, 0.92)),
           radial-gradient(circle at 50% 0%, rgba(77, 226, 197, 0.08), transparent 60%);
@@ -414,8 +426,8 @@
         z-index: 1;
         display: grid;
         place-items: center;
-        height: 154px;
-        margin: -4px -8px 18px;
+        height: clamp(86px, 15vh, 140px);
+        margin: -2px -6px 10px;
         border-radius: 16px;
         background:
           radial-gradient(circle at 50% 55%, rgba(77, 226, 197, 0.14), transparent 65%),
@@ -464,8 +476,8 @@
       .mode-card h2 {
         position: relative;
         z-index: 1;
-        margin: 14px 0 8px;
-        font-size: clamp(1.45rem, 2.4vw, 1.9rem);
+        margin: 8px 0 6px;
+        font-size: clamp(1.25rem, 2.1vw, 1.6rem);
         font-weight: 900;
         letter-spacing: -0.025em;
       }
@@ -475,8 +487,8 @@
         z-index: 1;
         margin: 0;
         color: #aec2d4;
-        font-size: 0.92rem;
-        line-height: 1.6;
+        font-size: 0.84rem;
+        line-height: 1.45;
       }
 
       .mode-points {
@@ -484,8 +496,8 @@
         z-index: 1;
         display: flex;
         flex-wrap: wrap;
-        gap: 7px;
-        margin: 16px 0 22px;
+        gap: 5px;
+        margin: 10px 0 12px;
         padding: 0;
         list-style: none;
       }
@@ -493,10 +505,10 @@
       .mode-points li {
         border: 1px solid rgba(255, 255, 255, 0.09);
         border-radius: 8px;
-        padding: 5px 8px;
+        padding: 4px 7px;
         background: rgba(255, 255, 255, 0.025);
         color: #8ea5ba;
-        font-size: 10px;
+        font-size: 9px;
         font-weight: 700;
         letter-spacing: 0.04em;
       }
@@ -511,9 +523,9 @@
         margin-top: auto;
         border: 1px solid rgba(77, 226, 197, 0.42);
         border-radius: 12px;
-        padding: 13px 16px;
+        padding: 9px 13px;
         color: var(--teal);
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 900;
         letter-spacing: 0.11em;
         text-transform: uppercase;
@@ -546,18 +558,19 @@
 
       .notes {
         display: grid;
+        flex: 0 0 auto;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 10px;
-        margin-top: clamp(18px, 3vh, 30px);
+        gap: 8px;
+        margin-top: 8px;
       }
 
       .note {
         display: flex;
         align-items: baseline;
-        gap: 10px;
+        gap: 8px;
         border: 1px solid var(--line);
-        border-radius: 12px;
-        padding: 12px 14px;
+        border-radius: 10px;
+        padding: 7px 10px;
         background: rgba(5, 13, 22, 0.55);
         backdrop-filter: blur(10px);
       }
@@ -565,24 +578,25 @@
       .note b {
         color: var(--teal);
         font-family: var(--mono);
-        font-size: 15px;
+        font-size: 13px;
         white-space: nowrap;
       }
 
       .note span {
         color: var(--muted);
-        font-size: 11px;
-        line-height: 1.4;
+        font-size: 10px;
+        line-height: 1.35;
       }
 
       footer {
         position: relative;
         z-index: 2;
-        max-width: 1120px;
+        flex: 0 0 auto;
+        width: min(1120px, 100%);
         margin: 0 auto;
-        padding: 10px 28px 30px;
+        padding: 4px 24px 10px;
         color: rgba(139, 160, 183, 0.62);
-        font-size: 10px;
+        font-size: 9px;
         letter-spacing: 0.08em;
         text-align: center;
       }
@@ -594,25 +608,25 @@
 
       /* ---------------------------------------------------------- responsive */
 
-      @media (max-width: 820px) {
-        .modes {
-          grid-template-columns: 1fr;
-        }
-
-        .mode-card {
-          min-height: 0;
-        }
-
+      @media (max-width: 860px) {
         .notes {
-          grid-template-columns: 1fr;
+          display: none;
+        }
+
+        .mode-visual {
+          height: 104px;
+        }
+
+        .mode-points {
+          display: none;
         }
 
         .site-header {
-          padding: 18px 18px 0;
+          padding: 14px 18px 0;
         }
 
         main {
-          padding: 34px 18px 34px;
+          padding: 8px 18px 0;
         }
 
         .brand small {
@@ -620,19 +634,85 @@
         }
       }
 
-      @media (max-width: 480px) {
-        .mode-visual {
-          height: 124px;
+      @media (max-width: 620px) {
+        .lead {
+          display: none;
+        }
+
+        .hero {
+          margin-bottom: 8px;
+        }
+
+        .eyebrow {
+          margin-bottom: 6px;
+          font-size: 9px;
         }
 
         .mode-card {
-          padding: 18px;
+          padding: 10px;
+        }
+
+        .mode-visual {
+          height: 72px;
+        }
+
+        .mode-kicker {
+          display: none;
+        }
+
+        .mode-card p {
+          display: none;
+        }
+
+        .mode-card h2 {
+          font-size: 0.95rem;
+        }
+
+        .cta {
+          padding: 7px 9px;
+          font-size: 8px;
         }
 
         .site-header {
-          align-items: flex-start;
-          flex-direction: column;
-          gap: 12px;
+          padding: 10px 12px 0;
+        }
+
+        main {
+          padding: 4px 12px 0;
+        }
+
+        footer {
+          display: none;
+        }
+      }
+
+      @media (max-height: 720px) {
+        .notes {
+          display: none;
+        }
+
+        .hero {
+          margin-bottom: 8px;
+        }
+
+        .lead {
+          display: none;
+        }
+
+        .mode-visual {
+          height: 100px;
+        }
+
+        .mode-points {
+          margin: 6px 0 8px;
+        }
+
+        .mode-card h2 {
+          margin: 4px 0;
+        }
+
+        footer {
+          padding-bottom: 6px;
         }
       }
 

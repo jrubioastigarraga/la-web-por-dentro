@@ -16,9 +16,9 @@ La portada `index.html` es un **selector de modo** con la estética del juego. D
 
 ## Pantalla principal y navegación
 
-- **`index.html`**: elige **Cabina FPV** o **Arcade clásico**.
-- **`fpv.html`**: cabina en primera persona. La barra superior permite volver a **Inicio**, abrir **Moodle** o saltar al **Arcade clásico**.
-- **`arcade-clasico.html`**: recreativa modular. La barra superior permite volver a **Inicio** o entrar en la **Cabina FPV**.
+- **`index.html`**: elige **Cabina FPV** o **Arcade clásico**. Cabe en una sola pantalla, sin scroll.
+- **`fpv.html`**: pantalla de inicio propia con **Jugar campaña** y **Moodle**, botón **Inicio** y selector **ES/EU** arriba. Al terminar la partida, **Menú** vuelve a esta misma página.
+- **`arcade-clasico.html`**: pantalla de inicio propia con **Jugar campaña** y **Moodle**, botón **Inicio** y selector **ES/EU** arriba. Al terminar la partida, **Menú** vuelve a esta misma página.
 - **Salir siempre**: en escritorio están los enlaces **← Inicio**, **← Menú** y `Esc`; en VR hay botones 3D de **SALIR/INICIO** visibles en todo momento, incluso durante la partida.
 
 ## La cabina
@@ -126,12 +126,12 @@ Juego (HTTP)  ->  API Python  ->  Moodle (format_quizdump)
 - API: **http://172.16.35.2/escuadron-api**
 - Plugin: `format_quizdump` (ZIP parcheado en [`moodle/format_quizdump.zip`](./moodle/format_quizdump.zip))
 
-En cualquiera de los dos juegos, pulsa **Moodle** y rellena solo:
+En la pantalla de inicio de cualquiera de los dos juegos, pulsa la tarjeta **Moodle**. Los valores por defecto ya están puestos:
 
 - **API (proxy)**: `http://172.16.35.2/escuadron-api`
-- **Cuestionario**: `quiz:39` (ID del quiz), `course:51` (todos los quizzes de un curso) o `cmid:7772` (el número que aparece en la URL de Moodle `mod/quiz/edit.php?cmid=7772`).
+- **Cuestionario**: `cmid:7772`
 
-Pulsa **Guardar** para conservarlo o **Cargar y jugar** para empezar.
+Puedes cambiarlos por `quiz:39` (ID del quiz) o `course:51` (todos los quizzes de un curso). Pulsa **Guardar** para conservarlos o **Cargar y jugar** para empezar.
 
 También por enlace, cómodo en Pico 4:
 

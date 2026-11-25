@@ -172,6 +172,314 @@
         transform: translateY(1px);
       }
 
+      /* ------------------------------------------------ pantalla de inicio */
+
+      #landing {
+        position: fixed;
+        inset: 0;
+        z-index: 8;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 78% 12%, rgba(255, 216, 150, 0.34), transparent 8%),
+          radial-gradient(circle at 78% 12%, rgba(255, 180, 84, 0.14), transparent 32%),
+          linear-gradient(180deg, #061424 0%, #0a2941 38%, #22627f 68%, #071522 100%);
+      }
+
+      #landing[hidden] {
+        display: none;
+      }
+
+      #landing::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+          linear-gradient(180deg, transparent 0 55%, rgba(5, 11, 20, 0.22) 74%, rgba(5, 11, 20, 0.92) 100%),
+          repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 4px);
+      }
+
+      #landing::after {
+        content: '';
+        position: absolute;
+        inset: auto 0 0;
+        height: 30%;
+        pointer-events: none;
+        opacity: 0.55;
+        background:
+          repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 15px),
+          linear-gradient(180deg, rgba(18, 75, 104, 0.2), rgba(4, 11, 19, 0.85));
+      }
+
+      .landing-inner {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        width: min(1120px, 100%);
+        flex: 1 1 auto;
+        min-height: 0;
+        flex-direction: column;
+        justify-content: center;
+        margin: 0 auto;
+        padding: 74px 24px 14px;
+      }
+
+      .landing-hero {
+        margin: 0 auto clamp(10px, 2vh, 22px);
+        text-align: center;
+      }
+
+      .landing-eyebrow {
+        margin: 0 0 8px;
+        color: var(--accent);
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+      }
+
+      .landing-hero h1 {
+        margin: 0;
+        color: #fff;
+        font-size: clamp(2rem, 5vw, 3.6rem);
+        font-weight: 900;
+        line-height: 0.98;
+        letter-spacing: -0.04em;
+        text-shadow: 0 0 44px rgba(77, 226, 197, 0.18), 0 8px 38px rgba(0, 0, 0, 0.5);
+      }
+
+      .landing-lead {
+        max-width: 640px;
+        margin: 10px auto 0;
+        color: #c1d4e4;
+        font-size: clamp(0.84rem, 1.3vw, 0.98rem);
+        line-height: 1.5;
+      }
+
+      .landing-cards {
+        display: grid;
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: 350px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: clamp(14px, 2.2vw, 24px);
+      }
+
+      .landing-card {
+        position: relative;
+        display: flex;
+        min-height: 0;
+        appearance: none;
+        flex-direction: column;
+        align-items: flex-start;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 22px;
+        padding: 16px 20px;
+        background:
+          linear-gradient(180deg, rgba(10, 24, 39, 0.86), rgba(4, 10, 18, 0.94)),
+          radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.06), transparent 60%);
+        color: var(--ink);
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
+        backdrop-filter: blur(14px);
+        transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+      }
+
+      .landing-card:hover,
+      .landing-card:focus-visible {
+        transform: translateY(-5px);
+        outline: none;
+      }
+
+      .landing-card.campaign {
+        border-color: rgba(77, 226, 197, 0.42);
+      }
+
+      .landing-card.campaign:hover,
+      .landing-card.campaign:focus-visible {
+        border-color: rgba(77, 226, 197, 0.85);
+        box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45), 0 0 60px rgba(77, 226, 197, 0.16);
+      }
+
+      .landing-card.moodle {
+        border-color: rgba(167, 139, 250, 0.4);
+      }
+
+      .landing-card.moodle:hover,
+      .landing-card.moodle:focus-visible {
+        border-color: rgba(167, 139, 250, 0.85);
+        box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45), 0 0 60px rgba(167, 139, 250, 0.16);
+      }
+
+      .landing-visual {
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: 100%;
+        height: clamp(82px, 14vh, 132px);
+        margin-bottom: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 15px;
+        background:
+          radial-gradient(circle at 50% 55%, rgba(77, 226, 197, 0.14), transparent 65%),
+          linear-gradient(180deg, rgba(8, 27, 43, 0.4), rgba(3, 9, 16, 0.4));
+      }
+
+      .landing-card.moodle .landing-visual {
+        background:
+          radial-gradient(circle at 50% 55%, rgba(167, 139, 250, 0.16), transparent 65%),
+          linear-gradient(180deg, rgba(20, 18, 42, 0.34), rgba(3, 9, 16, 0.42));
+      }
+
+      .landing-visual svg {
+        width: min(70%, 230px);
+        height: 100%;
+        filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.5));
+      }
+
+      .landing-kicker {
+        color: var(--muted);
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .landing-card.campaign .landing-kicker {
+        color: var(--accent);
+      }
+
+      .landing-card.moodle .landing-kicker {
+        color: #c4b5fd;
+      }
+
+      .landing-card strong {
+        margin: 5px 0 4px;
+        font-size: clamp(1.2rem, 2.1vw, 1.55rem);
+        font-weight: 900;
+        letter-spacing: -0.02em;
+      }
+
+      .landing-card small {
+        color: #aec2d4;
+        font-size: 0.82rem;
+        line-height: 1.42;
+      }
+
+      .landing-points {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin: 8px 0 6px;
+      }
+
+      .landing-points span {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 7px;
+        padding: 4px 7px;
+        background: rgba(255, 255, 255, 0.03);
+        color: #8ea5ba;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+
+      .landing-cta {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: auto;
+        padding-top: 10px;
+        color: var(--accent);
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .landing-card.moodle .landing-cta {
+        color: #c4b5fd;
+      }
+
+      body.landing #hint,
+      body.landing #btn-menu,
+      body.landing #crosshair {
+        display: none;
+      }
+
+      body.xr #landing {
+        display: none !important;
+      }
+
+      @media (max-width: 860px) {
+        .landing-inner {
+          padding: 70px 18px 10px;
+        }
+
+        .landing-visual {
+          height: 92px;
+        }
+      }
+
+      @media (max-width: 620px) {
+        .landing-inner {
+          padding: 62px 12px 4px;
+        }
+
+        .landing-hero h1 {
+          font-size: 1.7rem;
+        }
+
+        .landing-lead {
+          display: none;
+        }
+
+        .landing-card {
+          padding: 9px;
+        }
+
+        .landing-visual {
+          height: 68px;
+        }
+
+        .landing-kicker {
+          display: none;
+        }
+
+        .landing-card strong {
+          font-size: 0.95rem;
+        }
+
+        .landing-cta {
+          font-size: 8px;
+        }
+
+        .landing-eyebrow {
+          font-size: 8px;
+        }
+      }
+
+      @media (max-height: 720px) {
+        .landing-inner {
+          padding-top: 58px;
+        }
+
+        .landing-lead {
+          display: none;
+        }
+
+        .landing-visual {
+          height: 96px;
+        }
+      }
+
       /* ------------------------------------------------------- modal Moodle */
 
       .modal {
@@ -410,6 +718,93 @@
   <body>
     <div id="app" aria-label="Juego de combate aéreo en realidad virtual"></div>
 
+    <div id="landing" class="landing">
+      <div class="landing-inner">
+        <section class="landing-hero">
+          <p class="landing-eyebrow" id="landing-eyebrow">CABINA FPV · WEBXR</p>
+          <h1 id="landing-title">ELIGE TU MISIÓN</h1>
+          <p class="landing-lead" id="landing-lead">
+            Siéntate en el caza, lee la pregunta en el HUD y derriba el avión con la respuesta correcta.
+          </p>
+        </section>
+
+        <section class="landing-cards" aria-label="Opciones de la cabina FPV">
+          <button class="landing-card campaign" id="landing-campaign" type="button">
+            <span class="landing-visual" aria-hidden="true">
+              <svg viewBox="0 0 320 150">
+                <defs>
+                  <linearGradient id="landing-frame" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#5d7287" />
+                    <stop offset="1" stop-color="#16202c" />
+                  </linearGradient>
+                  <linearGradient id="landing-sky" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#164764" />
+                    <stop offset="1" stop-color="#2d7b9d" />
+                  </linearGradient>
+                </defs>
+                <rect x="26" y="16" width="268" height="118" rx="10" fill="url(#landing-sky)" />
+                <path d="M26 108h268v26H26z" fill="#07111c" opacity=".9" />
+                <path d="M59 134 45 16h20l9 118z" fill="url(#landing-frame)" />
+                <path d="M261 134 275 16h-20l-9 118z" fill="url(#landing-frame)" />
+                <path d="M84 134 76 16h168l-8 118z" fill="none" stroke="#8da5b9" stroke-width="2" opacity=".5" />
+                <path d="M85 134 91 88h138l6 46z" fill="#0a1522" stroke="#2c4053" stroke-width="2" />
+                <rect x="127" y="94" width="66" height="21" rx="3" fill="#07111c" stroke="#4de2c5" stroke-width="1.4" />
+                <rect x="132" y="99" width="24" height="3" rx="1.5" fill="#4de2c5" opacity=".8" />
+                <rect x="132" y="106" width="43" height="3" rx="1.5" fill="#6f8199" opacity=".8" />
+                <circle cx="213" cy="104" r="4" fill="#ffb454" />
+                <circle cx="224" cy="104" r="4" fill="#4de2c5" />
+                <path d="M160 28v26M144 36h32" stroke="#dff7ff" stroke-width="1.5" opacity=".7" />
+                <path d="M160 54c-2-2-4-2-5 0 3 7 7 7 10 0-1-2-3-2-5 0Z" fill="#ffb454" />
+              </svg>
+            </span>
+            <span class="landing-kicker" id="landing-campaign-kicker">WEBXR · 3D · HP</span>
+            <strong id="landing-campaign-title">JUGAR CAMPAÑA</strong>
+            <small id="landing-campaign-desc">
+              Cinco sectores, cazas, interceptores, bombarderos y HUD diegético en la cabina.
+            </small>
+            <span class="landing-points" aria-hidden="true">
+              <span>5 sectores</span><span>HUD</span><span>WebXR</span>
+            </span>
+            <span class="landing-cta">
+              <span id="landing-campaign-cta">DESPEGAR</span><span aria-hidden="true">→</span>
+            </span>
+          </button>
+
+          <button class="landing-card moodle" id="landing-moodle" type="button">
+            <span class="landing-visual" aria-hidden="true">
+              <svg viewBox="0 0 220 140">
+                <defs>
+                  <linearGradient id="landing-board" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#241b46" />
+                    <stop offset="1" stop-color="#0a0718" />
+                  </linearGradient>
+                </defs>
+                <rect x="54" y="30" width="112" height="76" rx="12" fill="url(#landing-board)" stroke="#a78bfa" stroke-width="2" />
+                <rect x="66" y="42" width="88" height="52" rx="6" fill="#070d15" />
+                <text x="110" y="82" text-anchor="middle" fill="#a78bfa" font-family="monospace" font-size="40" font-weight="800">?</text>
+                <path d="M70 101h80" stroke="#4de2c5" stroke-width="2" stroke-dasharray="4 5" opacity=".7" />
+                <circle cx="72" cy="112" r="4" fill="#ffb454" />
+                <circle cx="88" cy="112" r="4" fill="#a78bfa" />
+                <circle cx="104" cy="112" r="4" fill="#4de2c5" />
+                <text x="110" y="24" text-anchor="middle" fill="#c4b5fd" font-family="monospace" font-size="10" font-weight="700" letter-spacing="2">MOODLE</text>
+              </svg>
+            </span>
+            <span class="landing-kicker" id="landing-moodle-kicker">API · CMID 7772</span>
+            <strong id="landing-moodle-title">MOODLE</strong>
+            <small id="landing-moodle-desc">
+              API http://172.16.35.2/escuadron-api y cuestionario cmid:7772 ya configurados.
+            </small>
+            <span class="landing-points" aria-hidden="true">
+              <span>API</span><span>CMID 7772</span><span>Moodle</span>
+            </span>
+            <span class="landing-cta">
+              <span id="landing-moodle-cta">CARGAR PREGUNTAS</span><span aria-hidden="true">→</span>
+            </span>
+          </button>
+        </section>
+      </div>
+    </div>
+
     <header id="topbar">
       <div class="brand">
         <span class="logo" aria-hidden="true"></span>
@@ -422,10 +817,6 @@
         </div>
         <a class="ui" id="link-home" href="./index.html" title="Volver a la pantalla principal">
           ← Inicio
-        </a>
-        <button class="ui" type="button" id="btn-moodle">Moodle</button>
-        <a class="ui" href="./arcade-clasico.html" title="Versión de recreativa con pantalla 2D">
-          Arcade clásico
         </a>
       </div>
     </header>
@@ -528,6 +919,20 @@
           aimHint: 'VR: apunta con el mando y dispara al botón · Escritorio: clic',
           menuBody:
             'Derriba la respuesta correcta antes de que cruce la línea de defensa. Si disparas a una equivocada, pierdes HP.',
+          landingEyebrow: 'CABINA FPV · WEBXR',
+          landingTitle: 'ELIGE TU MISIÓN',
+          landingLead:
+            'Siéntate en el caza, lee la pregunta en el HUD y derriba el avión con la respuesta correcta.',
+          landingCampaignKicker: 'WEBXR · 3D · HP',
+          landingCampaignTitle: 'JUGAR CAMPAÑA',
+          landingCampaignDesc:
+            'Cinco sectores, cazas, interceptores, bombarderos y HUD diegético en la cabina.',
+          landingCampaignCta: 'DESPEGAR',
+          landingMoodleKicker: 'API · CMID 7772',
+          landingMoodleTitle: 'MOODLE',
+          landingMoodleDesc:
+            'API http://172.16.35.2/escuadron-api y cuestionario cmid:7772 ya configurados.',
+          landingMoodleCta: 'CARGAR PREGUNTAS',
           standby: 'MISIÓN EN ESPERA',
           tagQuestion: 'PREGUNTA',
           tagCorrect: 'CORRECTO',
@@ -571,7 +976,7 @@
           moodleLoading: 'Cargando preguntas…',
           moodleError: 'No se han podido cargar las preguntas.',
           moodleReady: '{n} preguntas cargadas.',
-          moodleHint: 'Configura Moodle desde la barra superior (escritorio) o pulsa MOODLE en el menú 3D.',
+          moodleHint: 'Configura Moodle desde la tarjeta MOODLE de la pantalla de inicio o desde el menú 3D.',
           moodleQuestion: 'Pregunta {n} de {total}',
           moodleDone: 'MOODLE COMPLETADO',
           moodleResult: '{done} de {total} pantallas',
@@ -587,6 +992,20 @@
           aimHint: 'VR: seinalatu agintearekin eta tiro egin botoiari · Mahaigaina: klik',
           menuBody:
             'Bota erantzun zuzena defentsa-marra zeharkatu aurretik. Okerrekoari tiratuz gero, HP galduko duzu.',
+          landingEyebrow: 'FPV KABINA · WEBXR',
+          landingTitle: 'AUKERATU ZURE MISIOA',
+          landingLead:
+            'Eseri ehiza-hegazkinean, irakurri galdera HUDan eta bota erantzun zuzena duen hegazkina.',
+          landingCampaignKicker: 'WEBXR · 3D · HP',
+          landingCampaignTitle: 'JOLASTU KANPAINA',
+          landingCampaignDesc:
+            'Bost sektore, ehiza-hegazkinak, interzeptoreak, bonbaketariak eta HUD diegetikoa kabinan.',
+          landingCampaignCta: 'HEGAN EGIN',
+          landingMoodleKicker: 'API · CMID 7772',
+          landingMoodleTitle: 'MOODLE',
+          landingMoodleDesc:
+            'API http://172.16.35.2/escuadron-api eta cmid:7772 galdetegia konfiguratuta.',
+          landingMoodleCta: 'KARGATU GALDERAK',
           standby: 'MISIOA ZAIN',
           sector: 'SEKTOREA',
           wave: 'OLATUA',
@@ -627,7 +1046,7 @@
           moodleLoading: 'Galderak kargatzen…',
           moodleError: 'Ezin izan dira galderak kargatu.',
           moodleReady: '{n} galdera kargatuta.',
-          moodleHint: 'Konfiguratu Moodle goiko barran (mahaigaina) edo sakatu MOODLE 3D menuan.',
+          moodleHint: 'Konfiguratu Moodle hasierako MOODLE txartelatik edo 3D menuan.',
           moodleQuestion: '{n}. galdera, {total}tik',
           moodleDone: 'MOODLE AMAITUTA',
           moodleResult: '{done} / {total} pantaila',
@@ -706,6 +1125,18 @@
         set('moodle-play', t('moodlePlay'));
         set('moodle-test', t('moodleTest'));
         set('moodle-close', t('moodleClose'));
+
+        set('landing-eyebrow', t('landingEyebrow'));
+        set('landing-title', t('landingTitle'));
+        set('landing-lead', t('landingLead'));
+        set('landing-campaign-kicker', t('landingCampaignKicker'));
+        set('landing-campaign-title', t('landingCampaignTitle'));
+        set('landing-campaign-desc', t('landingCampaignDesc'));
+        set('landing-campaign-cta', t('landingCampaignCta'));
+        set('landing-moodle-kicker', t('landingMoodleKicker'));
+        set('landing-moodle-title', t('landingMoodleTitle'));
+        set('landing-moodle-desc', t('landingMoodleDesc'));
+        set('landing-moodle-cta', t('landingMoodleCta'));
       }
 
       function shuffle(list) {
@@ -2508,6 +2939,25 @@
         hudLabelKey: 'standby',
       };
 
+      const landingEl = document.getElementById('landing');
+
+      function showLanding() {
+        if (!landingEl) return;
+        landingEl.hidden = false;
+        document.body.classList.add('landing');
+      }
+
+      function hideLanding() {
+        if (!landingEl) return;
+        landingEl.hidden = true;
+        document.body.classList.remove('landing');
+      }
+
+      function returnToGameHome() {
+        // Vuelve a la pantalla principal de ESTE modo, no a la portada general.
+        window.location.href = './fpv.html';
+      }
+
       const save = (() => {
         try {
           const raw = JSON.parse(localStorage.getItem(CFG.bestKey) || '{}');
@@ -2898,7 +3348,8 @@
           tone: '#8296ad',
         });
         menu.position.set(0.26, -0.28, 0.03);
-        menu.userData.onSelect = showMenu;
+        // Fin de partida: volvemos a la pantalla principal de fpv.html.
+        menu.userData.onSelect = returnToGameHome;
         resultPanel.add(menu);
         panelButtons.push(menu);
         placePanel();
@@ -2936,8 +3387,8 @@
         base: 'https://moodle.lhusurbil.eus',
         key: '',
         ids: '',
-        quiz: '',
-        api: '',
+        quiz: 'cmid:7772',
+        api: 'http://172.16.35.2/escuadron-api',
       };
 
       function loadMoodleConfig() {
@@ -2947,8 +3398,8 @@
             base: String(raw.base || MOODLE_DEFAULTS.base).replace(/\/+$/, ''),
             key: String(raw.key || ''),
             ids: String(raw.ids || ''),
-            quiz: String(raw.quiz || ''),
-            api: String(raw.api || ''),
+            quiz: String(raw.quiz || MOODLE_DEFAULTS.quiz),
+            api: String(raw.api || MOODLE_DEFAULTS.api),
           };
         } catch {
           return { ...MOODLE_DEFAULTS };
@@ -3028,7 +3479,12 @@
       async function fetchMoodleQuestions(config) {
         const quiz = String(config.quiz || '').trim();
         const ids = parseMoodleIds(config.ids);
-        const api = String(config.api || '').trim().replace(/\/+$/, '');
+        let api = String(config.api || '').trim().replace(/\/+$/, '');
+
+        // Si la página va por HTTPS, usamos también HTTPS para evitar contenido mixto.
+        if (window.location.protocol === 'https:' && /^http:\/\/172\.16\.35\.2/i.test(api)) {
+          api = api.replace(/^http:/i, 'https:');
+        }
 
         let url;
         if (api) {
@@ -3183,6 +3639,16 @@
         openMoodle();
       });
 
+      document.getElementById('landing-campaign')?.addEventListener('click', () => {
+        initAudio();
+        startCampaign();
+      });
+
+      document.getElementById('landing-moodle')?.addEventListener('click', () => {
+        initAudio();
+        openMoodle();
+      });
+
       document.getElementById('moodle-close')?.addEventListener('click', closeMoodle);
 
       document.getElementById('moodle-save')?.addEventListener('click', () => {
@@ -3333,6 +3799,7 @@
         game.hudLabelKey = 'tagQuestion';
 
         hidePanels();
+        hideLanding();
         resetViewForRun();
         calibrateFlight();
         document.body.classList.add('playing');
@@ -3669,6 +4136,7 @@
         placePanel();
         setMood(0);
         calibrateFlight();
+        showLanding();
       }
 
       /* ==========================================================================

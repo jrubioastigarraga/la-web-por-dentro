@@ -18,6 +18,92 @@
   <body>
     <div id="app"></div>
 
+    <div id="landing" class="landing">
+      <div class="landing-inner">
+        <section class="landing-hero">
+          <p class="landing-eyebrow" id="landing-eyebrow">ARCADE CLÁSICO · 1945</p>
+          <h1 id="landing-title">ELIGE TU MISIÓN</h1>
+          <p class="landing-lead" id="landing-lead">
+            La recreativa de siempre, con preguntas de Moodle y cinco sectores del ciclo DAW.
+          </p>
+        </section>
+
+        <section class="landing-cards" aria-label="Opciones del arcade clásico">
+          <button class="landing-card campaign" id="landing-campaign" type="button">
+            <span class="landing-visual" aria-hidden="true">
+              <svg viewBox="0 0 220 140">
+                <defs>
+                  <linearGradient id="landing-cabinet" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#4d3621" />
+                    <stop offset="1" stop-color="#160f09" />
+                  </linearGradient>
+                  <linearGradient id="landing-crt" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#0b3348" />
+                    <stop offset="1" stop-color="#06131f" />
+                  </linearGradient>
+                </defs>
+                <path d="M70 130V42c0-8 6-14 14-14h52c8 0 14 6 14 14v88z" fill="url(#landing-cabinet)" stroke="#7b5a37" stroke-width="2" />
+                <path d="M57 39V23c0-6 5-11 11-11h84c6 0 11 5 11 11v16z" fill="#24170d" stroke="#ffb454" stroke-width="2" />
+                <rect x="82" y="42" width="56" height="46" rx="6" fill="#070d15" stroke="#ffb454" stroke-width="2" />
+                <rect x="88" y="48" width="44" height="33" rx="4" fill="url(#landing-crt)" />
+                <path d="M93 72h34M98 66h24M103 60h14" stroke="#4de2c5" stroke-width="1.4" opacity=".7" />
+                <path d="M110 55c4-4 9-4 13 0-4 1.5-8.5 1.5-13 0Z" fill="#ffb454" />
+                <rect x="88" y="94" width="44" height="12" rx="3" fill="#1a120b" stroke="#6d5133" />
+                <circle cx="98" cy="100" r="2.5" fill="#ffb454" />
+                <circle cx="108" cy="100" r="2.5" fill="#4de2c5" />
+                <circle cx="118" cy="100" r="2.5" fill="#f472b6" />
+                <path d="M64 119h92" stroke="#3b2a1b" stroke-width="4" stroke-linecap="round" />
+                <text x="110" y="34" text-anchor="middle" fill="#ffb454" font-family="monospace" font-size="9" font-weight="700" letter-spacing="2">1945</text>
+              </svg>
+            </span>
+            <span class="landing-kicker" id="landing-campaign-kicker">1945 · CRT · 3 VIDAS</span>
+            <strong id="landing-campaign-title">JUGAR CAMPAÑA</strong>
+            <small id="landing-campaign-desc">
+              Cinco sectores, power-ups P y R, línea de defensa y jefes de escuadrón.
+            </small>
+            <span class="landing-points" aria-hidden="true">
+              <span>5 sectores</span><span>Power-ups</span><span>1945</span>
+            </span>
+            <span class="landing-cta">
+              <span id="landing-campaign-cta">DESPEGAR</span><span aria-hidden="true">→</span>
+            </span>
+          </button>
+
+          <button class="landing-card moodle" id="landing-moodle" type="button">
+            <span class="landing-visual" aria-hidden="true">
+              <svg viewBox="0 0 220 140">
+                <defs>
+                  <linearGradient id="landing-board" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#241b46" />
+                    <stop offset="1" stop-color="#0a0718" />
+                  </linearGradient>
+                </defs>
+                <rect x="54" y="30" width="112" height="76" rx="12" fill="url(#landing-board)" stroke="#a78bfa" stroke-width="2" />
+                <rect x="66" y="42" width="88" height="52" rx="6" fill="#070d15" />
+                <text x="110" y="82" text-anchor="middle" fill="#a78bfa" font-family="monospace" font-size="40" font-weight="800">?</text>
+                <path d="M70 101h80" stroke="#4de2c5" stroke-width="2" stroke-dasharray="4 5" opacity=".7" />
+                <circle cx="72" cy="112" r="4" fill="#ffb454" />
+                <circle cx="88" cy="112" r="4" fill="#a78bfa" />
+                <circle cx="104" cy="112" r="4" fill="#4de2c5" />
+                <text x="110" y="24" text-anchor="middle" fill="#c4b5fd" font-family="monospace" font-size="10" font-weight="700" letter-spacing="2">MOODLE</text>
+              </svg>
+            </span>
+            <span class="landing-kicker" id="landing-moodle-kicker">API · CMID 7772</span>
+            <strong id="landing-moodle-title">MOODLE</strong>
+            <small id="landing-moodle-desc">
+              API http://172.16.35.2/escuadron-api y cuestionario cmid:7772 ya configurados.
+            </small>
+            <span class="landing-points" aria-hidden="true">
+              <span>API</span><span>CMID 7772</span><span>Moodle</span>
+            </span>
+            <span class="landing-cta">
+              <span id="landing-moodle-cta">CARGAR PREGUNTAS</span><span aria-hidden="true">→</span>
+            </span>
+          </button>
+        </section>
+      </div>
+    </div>
+
     <header id="topbar">
       <div class="brand">
         <span class="logo" aria-hidden="true"></span>
@@ -29,8 +115,6 @@
           <button class="lang" type="button" data-lang="eu">EU</button>
         </div>
         <a class="ui compact" id="link-home" href="./index.html">← Inicio</a>
-        <a class="ui compact" id="link-fpv" href="./fpv.html">Cabina FPV</a>
-        <button class="ui compact" type="button" id="btn-moodle">Moodle</button>
         <div class="dots" id="dots" aria-label="Progreso del juego"></div>
       </div>
     </header>

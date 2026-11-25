@@ -42,6 +42,13 @@ let game = null;
 /* ------------------------------------------------------------------ tres */
 
 const host = document.getElementById('app');
+const landing = document.getElementById('landing');
+
+function setLanding(visible) {
+  if (!landing) return;
+  landing.hidden = !visible;
+  document.body.classList.toggle('landing', visible);
+}
 
 const renderer = new THREE.WebGLRenderer({
   antialias: true,
@@ -359,6 +366,9 @@ const api = {
   startGame,
   showMenu,
   playMoodle: quickMoodle,
+  exitToGameHome: () => {
+    window.location.href = './arcade-clasico.html';
+  },
   submitScore,
   get best() {
     return save.best;
@@ -383,6 +393,7 @@ function clearStage() {
 function startGame(opts = {}) {
   clearStage();
   state.screen = 'game';
+  setLanding(false);
   document.body.classList.add('in-game');
   backButton.visible = renderer.xr.isPresenting;
   const backBtn = document.getElementById('btn-back');
@@ -405,6 +416,7 @@ function showMenu() {
 
   hud.group.visible = true;
   stage.add(buildMenu(api));
+  setLanding(true);
   document.body.style.cursor = '';
 }
 
@@ -544,6 +556,16 @@ async function quickMoodle() {
 }
 
 document.getElementById('btn-moodle')?.addEventListener('click', () => {
+  initAudio();
+  openMoodle();
+});
+
+document.getElementById('landing-campaign')?.addEventListener('click', () => {
+  initAudio();
+  startGame({ sector: null });
+});
+
+document.getElementById('landing-moodle')?.addEventListener('click', () => {
   initAudio();
   openMoodle();
 });
