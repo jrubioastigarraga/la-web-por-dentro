@@ -26,7 +26,7 @@ La portada `index.html` es un **selector de modo** con la estética del juego. D
 [](#la-cabina)
 
 - **Vista en primera persona** dentro de un caza procedural: marco metálico más ancho, panel de instrumentos con luces emisivas, consolas laterales, cúpula de cristal y hélice girando frente al morro.
-- **Pregunta siempre arriba**: un HUD anclado a la cabeza muestra únicamente el enunciado en la parte superior, sin etiqueta `PREGUNTA` ni aviso genérico. El panel de instrumentos conserva los marcadores y la explicación del resultado.
+- **Pregunta en el panel, como un HUD de coche**: el enunciado va en la pantalla inferior del panel de instrumentos, junto a `SCORE`, `HP` y `OLEADA`, sin etiqueta `PREGUNTA` ni aviso genérico. En VR la cabina se eleva 14 cm respecto a la cabeza para que el panel quede cómodo sentado, sin tener que ponerse de pie.
 - **HUD diegético** dibujado con `CanvasTexture` sobre el panel de instrumentos: `SCORE`, `HP`, `OLEADA`, sector y mensaje de estado. Nada de menús pegados a la cara.
 - **Océano infinito** con olas geométricas en shader, islas low-poly con palmeras, nubes volumétricas, estelas de velocidad, niebla y un cielo con degradado y sol.
 - **Tres tipos de enemigo** que llegan de frente en formación:

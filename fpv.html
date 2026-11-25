@@ -899,6 +899,7 @@
         fireCooldown: 0.11,
         flightRangeX: 4.2,
         flightRangeY: 1.9,
+        seatLift: 0.14,
         bestKey: 'lwpd.vr.v1',
       };
 
@@ -2363,7 +2364,7 @@
       cockpit.add(cylinder(0.045, 0.55, darkMat, 0.56, -0.36, -0.78, Math.PI / 2, 0, 0, 8));
 
       // Marco del panel de instrumentos (el HUD va delante, no dentro).
-      cockpit.add(box(0.72, 0.26, 0.05, darkMat, 0, -0.27, -0.58, -0.1, 0, 0));
+      cockpit.add(box(0.8, 0.31, 0.05, darkMat, 0, -0.235, -0.585, -0.1, 0, 0));
 
       // Cúpula de cristal.
       const canopyGlass = new THREE.Mesh(
@@ -2444,7 +2445,7 @@
         constructor() {
           this.canvas = document.createElement('canvas');
           this.canvas.width = 1200;
-          this.canvas.height = 300;
+          this.canvas.height = 420;
           this.ctx = this.canvas.getContext('2d');
           this.texture = canvasTexture(this.canvas);
           this.texture.anisotropy = 8;
@@ -2463,7 +2464,7 @@
           this.key = '';
 
           this.mesh = new THREE.Mesh(
-            new THREE.PlaneGeometry(0.64, 0.16),
+            new THREE.PlaneGeometry(0.72, 0.252),
             new THREE.MeshBasicMaterial({
               map: this.texture,
               transparent: true,
@@ -2471,7 +2472,7 @@
               toneMapped: false,
             })
           );
-          this.mesh.position.set(0, -0.25, -0.545);
+          this.mesh.position.set(0, -0.235, -0.545);
           this.mesh.rotation.x = -0.08;
           this.mesh.renderOrder = 12;
           cockpit.add(this.mesh);
@@ -2563,16 +2564,25 @@
           ctx.lineTo(W - 26, 108);
           ctx.stroke();
 
-          // En el panel solo va el mensaje de estado: la pregunta ya está
-          // arriba, en el HUD de la cabina.
-          const message = d.feedback || '';
-          if (message) {
+          // Pregunta en el panel, como un HUD de coche.
+          if (d.question) {
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#f2f8fd';
+            ctx.font = `700 36px ${FONT}`;
+            const qLines = wrapLines(ctx, d.question, W - 64, 2);
+            qLines.forEach((line, i) => {
+              ctx.fillText(line, 32, 132 + i * 42);
+            });
+          }
+
+          // Resultado o explicación.
+          if (d.feedback) {
             ctx.textAlign = 'left';
             ctx.fillStyle = tone;
-            ctx.font = `600 30px ${FONT}`;
-            const fLines = wrapLines(ctx, message, W - 64, 2);
+            ctx.font = `600 26px ${FONT}`;
+            const fLines = wrapLines(ctx, d.feedback, W - 64, 2);
             fLines.forEach((line, i) => {
-              ctx.fillText(line, 32, 154 + i * 38);
+              ctx.fillText(line, 32, 258 + i * 32);
             });
           }
 
@@ -3112,15 +3122,9 @@
           tone: sectorTone,
         });
 
-        questionHud.set({
-          show:
-            game.state === 'intro' ||
-            game.state === 'playing' ||
-            game.state === 'feedback' ||
-            game.state === 'clear',
-          question,
-          tone: game.hudTone || sectorTone,
-        });
+        // La pregunta va en el panel de instrumentos (HUD de coche), no anclada
+        // a la cabeza. El antiguo HUD superior queda desactivado.
+        questionHud.group.visible = false;
       }
 
       /* --------------------------------------------------------- panel holográfico */
@@ -5153,6 +5157,9 @@
         const dir = camera.getWorldDirection(V3());
 
         cockpitRoot.position.copy(head);
+        // Asiento ligeramente elevado para que el panel quede cómodo al estar
+        // sentado en el visor, sin tener que ponerse de pie.
+        cockpitRoot.position.y += CFG.seatLift;
         cockpitRoot.rotation.set(0, Math.atan2(-dir.x, -dir.z), 0);
         cockpitTilt.position.set(0, 0, 0);
         cockpitTilt.rotation.set(0, 0, 0);
